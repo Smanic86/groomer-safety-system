@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: { navigation: any }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,9 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Login failed', error.message);
       console.error('Login error:', error.message);
+    } else {
+      // Navigate to your dashboard screen using React Navigation
+      navigation.replace('Dashboard');
     }
   }
 

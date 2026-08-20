@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import RiskAssessmentScreen from './RiskAssessmentScreen';
-import IncidentReportScreen from './IncidentReportScreen';
+import { View, Text, StyleSheet, Button, ScrollView } from 'react-native';
 
 type SafetyCheckProps = {
-  pet?: any;
-  onBack?: () => void;
-  onStartAssessment?: () => void;
-  onLogIncident?: () => void;
-  groomerId?: string;
-  businessId?: string;
+  pet: any;
+  groomerId: string;
+  businessId: string;
+  onBack: () => void;
+  onStartAssessment: () => void;
+  onLogIncident: () => void;
 };
 
 export default function SafetyCheckScreen({
@@ -17,134 +14,78 @@ export default function SafetyCheckScreen({
   onBack,
   onStartAssessment,
   onLogIncident,
-  groomerId = 'demo-groomer',
-  businessId = 'default-business-id',
 }: SafetyCheckProps) {
-  const [internalMode, setInternalMode] = useState<'detail' | 'assessment' | 'incident'>('detail');
-
-  const handleStartAssessment = () => {
-    if (typeof onStartAssessment === 'function') {
-      onStartAssessment();
-    } else {
-      setInternalMode('assessment');
-    }
-  };
-
-  const handleLogIncident = () => {
-    if (typeof onLogIncident === 'function') {
-      onLogIncident();
-    } else {
-      setInternalMode('incident');
-    }
-  };
-
-  if (internalMode === 'assessment') {
-    return (
-      <RiskAssessmentScreen
-        petId={pet?.id ?? 'unknown-pet'}
-        groomerId={groomerId}
-        businessId={businessId}
-        onDone={() => setInternalMode('detail')}
-      />
-    );
-  }
-
-  if (internalMode === 'incident') {
-    return (
-      <IncidentReportScreen
-        petId={pet?.id ?? 'unknown-pet'}
-        groomerId={groomerId}
-        businessId={businessId}
-        onDone={() => setInternalMode('detail')}
-        onCancel={() => setInternalMode('detail')}
-      />
-    );
-  }
-
   return (
-    <View style={styles.outerContainer}>
-      {onBack ? (
-        <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={styles.link}>← Back to list</Text>
-        </Pressable>
-      ) : null}
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Button title="← Back to Pets" onPress={onBack} />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.petName}>{pet?.name ?? 'Pet Profile'}</Text>
-        <Text style={styles.subText}>Breed: {pet?.breed ?? 'Unknown'}</Text>
-        <Text style={styles.subText}>Owner: {pet?.clients?.full_name ?? 'Unknown'}</Text>
-        {pet?.clients?.phone && <Text style={styles.subText}>Phone: {pet.clients.phone}</Text>}
+      <Text style={styles.title}>{pet.name}</Text>
+      <Text style={styles.subtitle}>Breed: {pet.breed ?? 'Unknown'}</Text>
+      <Text style={styles.subtitle}>
+        Temperament: {pet.temperament_rating ?? 'Standard'}
+      </Text>
 
-        {pet?.trigger_flags && pet.trigger_flags.length > 0 && (
-          <View style={styles.flagsBox}>
-            <Text style={styles.flagsTitle}>Trigger Flags / Safety Warnings:</Text>
-            {pet.trigger_flags.map((flag: string, index: number) => (
-              <Text key={index} style={styles.flagItem}>• {flag}</Text>
-            ))}
-          </View>
+      {/* Trigger Flags */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>⚠️ Safety & Trigger Flags</Text>
+        {pet.trigger_flags && pet.trigger_flags.length > 0 ? (
+          pet.trigger_flags.map((flag: string, index: number) => (
+            <Text key={index} style={styles.flagItem}>
+              • {flag.replace('_', ' ')}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.noneText}>No active trigger flags</Text>
         )}
+      </View>
 
-        {pet?.vet_notes && (
-          <View style={styles.notesBox}>
-            <Text style={styles.notesTitle}>Vet Notes:</Text>
-            <Text style={styles.notesText}>{pet.vet_notes}</Text>
-          </View>
-        )}
-
-        <View style={styles.actionsContainer}>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.primaryButton,
-              { opacity: pressed ? 0.7 : 1 }
-            ]} 
-            onPress={handleStartAssessment}
-          >
-            <Text style={styles.buttonText}>Start Pre-Groom Check</Text>
-          </Pressable>
-
-          <Pressable 
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              { opacity: pressed ? 0.7 : 1 }
-            ]} 
-            onPress={handleLogIncident}
-          >
-            <Text style={styles.secondaryButtonText}>Log Incident</Text>
-          </Pressable>
+      {/* Vet Notes */}
+      {pet.vet_notes && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📋 Vet & Groomer Notes</Text>
+          <Text style={styles.notesText}>{pet.vet_notes}</Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+
+      {/* Action Buttons */}
+      <View style={styles.buttonGroup}>
+        <View style={styles.btnSpacing}>
+          <Button title="Start Risk Assessment" onPress={onStartAssessment} color="#2563eb" />
+        </View>
+        <View style={styles.btnSpacing}>
+          <Button title="Log Safety Incident" onPress={onLogIncident} color="#dc2626" />
+        </View>
+      </View>
+
+      {/* Copyright Notice */}
+      <View style={styles.copyrightContainer}>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Groomer Safety System. All rights reserved.
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  outerContainer: { flex: 1, paddingTop: 40, paddingHorizontal: 16 },
-  scrollContent: { paddingBottom: 60 },
-  backButton: { paddingVertical: 10, marginBottom: 10, alignSelf: 'flex-start' },
-  link: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
-  petName: { fontSize: 26, fontWeight: 'bold', marginBottom: 4 },
-  subText: { fontSize: 15, color: '#444', marginBottom: 4 },
-  flagsBox: { backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginTop: 16 },
-  flagsTitle: { color: '#991b1b', fontWeight: 'bold', marginBottom: 6 },
-  flagItem: { color: '#991b1b', fontSize: 14, marginBottom: 2 },
-  notesBox: { backgroundColor: '#f3f4f6', padding: 12, borderRadius: 8, marginTop: 12 },
-  notesTitle: { fontWeight: 'bold', marginBottom: 4 },
-  notesText: { color: '#374151' },
-  actionsContainer: { marginTop: 28, gap: 12 },
-  primaryButton: { 
-    backgroundColor: '#2563eb', 
-    padding: 16, 
-    borderRadius: 8, 
-    alignItems: 'center',
-    cursor: 'pointer' as any,
+  container: { flex: 1, padding: 16, paddingTop: 50 },
+  header: { alignItems: 'flex-start', marginBottom: 12 },
+  title: { fontSize: 26, fontWeight: '700', marginBottom: 4 },
+  subtitle: { fontSize: 16, color: '#4b5563', marginBottom: 4 },
+  card: {
+    backgroundColor: '#f3f4f6',
+    padding: 14,
+    borderRadius: 8,
+    marginVertical: 10,
   },
-  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  secondaryButton: { 
-    backgroundColor: '#fee2e2', 
-    padding: 16, 
-    borderRadius: 8, 
-    alignItems: 'center',
-    cursor: 'pointer' as any,
-  },
-  secondaryButtonText: { color: '#b91c1c', fontWeight: 'bold', fontSize: 16 },
+  cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  flagItem: { fontSize: 14, color: '#b91c1c', fontWeight: '500', marginVertical: 2 },
+  noneText: { fontSize: 14, color: '#6b7280' },
+  notesText: { fontSize: 14, color: '#1f2937' },
+  buttonGroup: { marginTop: 20, marginBottom: 20 },
+  btnSpacing: { marginVertical: 6 },
+  copyrightContainer: { marginTop: 20, marginBottom: 40, alignItems: 'center' },
+  copyrightText: { fontSize: 12, color: '#9ca3af', textAlign: 'center' },
 });

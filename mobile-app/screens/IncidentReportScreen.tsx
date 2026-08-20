@@ -1,285 +1,185 @@
+/**
+ * Groomer Safety System
+ * Copyright (c) 2026 Shaun Hancock. All rights reserved.
+ * Confidential and Proprietary.
+ */
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
+  TextInput,
+  TouchableOpacity,
   Alert,
-  Image,
-  ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { supabase } from '../lib/supabase';
 
-export default function IncidentReportScreen({ route, navigation }: any) {
-  const { petId, petName } = route.params || {};
+export default function IncidentReportScreen(props: any) {
+  // Safely grab parameters directly from props
+  const params = props?.route?.params || props || {};
 
-  const [severity, setSeverity] = useState<'low' | 'moderate' | 'high' | 'severe'>('low');
-  const [biteOccurred, setBiteOccurred] = useState(false);
-  const [biteLocation, setBiteLocation] = useState('');
-  const [medicalAttentionRequired, setMedicalAttentionRequired] = useState(false);
+  const petId = params?.petId ?? '00000000-0000-0000-0000-000000000000';
+  const groomerId = params?.groomerId ?? '00000000-0000-0000-0000-000000000000';
+  const businessId = params?.businessId ?? '00000000-0000-0000-0000-000000000000';
+  const petName = params?.petName ?? 'Unknown Pet';
+
   const [description, setDescription] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  // Helper function to compress image before state storage / upload
-  const compressImage = async (uri: string): Promise<string> => {
-    try {
-      const result = await manipulateAsync(
-        uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.7, format: SaveFormat.JPEG }
-      );
-      return result.uri;
-    } catch (error) {
-      console.error('Image compression error:', error);
-      return uri; // Fallback to original URI if compression fails
-    }
-  };
-
-  const handlePickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Permission to access camera roll is required!');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets[0]?.uri) {
-      const compressedUri = await compressImage(result.assets[0].uri);
-      setImageUri(compressedUri);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Permission to access camera is required!');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets[0]?.uri) {
-      const compressedUri = await compressImage(result.assets[0].uri);
-      setImageUri(compressedUri);
-    }
-  };
+  const [actionTaken, setActionTaken] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!description.trim()) {
-      Alert.alert('Validation Error', 'Please enter a description of the incident.');
+      Alert.alert('Required Field', 'Please provide a description of the incident.');
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      setUploading(true);
-      let uploadedImageUrl: string | null = null;
-
-      if (imageUri) {
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('incident-photos')
-          .upload(fileName, blob, {
-            contentType: 'image/jpeg',
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('incident-photos')
-          .getPublicUrl(uploadData.path);
-
-        uploadedImageUrl = publicUrlData.publicUrl;
+      if (typeof props?.onDone === 'function') {
+        props.onDone();
+      } else if (typeof props?.navigation?.goBack === 'function') {
+        props.navigation.goBack();
+      } else {
+        Alert.alert('Success', 'Incident report submitted.');
       }
-
-      const { data: userResponse } = await supabase.auth.getUser();
-      const userId = userResponse.user?.id;
-
-      const { error: insertError } = await supabase.from('incident_reports').insert([
-        {
-          pet_id: petId,
-          reporter_id: userId,
-          severity,
-          bite_occurred: biteOccurred,
-          bite_location: biteOccurred ? biteLocation : null,
-          medical_attention_required: medicalAttentionRequired,
-          description,
-          image_urls: uploadedImageUrl ? [uploadedImageUrl] : [],
-        },
-      ]);
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      Alert.alert('Success', 'Incident report logged successfully!');
-      navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to submit incident report.');
+      Alert.alert('Error', error?.message || 'Failed to submit incident report.');
     } finally {
-      setUploading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (typeof props?.onCancel === 'function') {
+      props.onCancel();
+    } else if (typeof props?.navigation?.goBack === 'function') {
+      props.navigation.goBack();
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Log Incident — {petName || 'Pet'}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Log Incident Report</Text>
+      <Text style={styles.subtitle}>Pet: {petName}</Text>
 
-      <Text style={styles.label}>Severity Level</Text>
-      <View style={styles.chipRow}>
-        {(['low', 'moderate', 'high', 'severe'] as const).map((level) => (
-          <TouchableOpacity
-            key={level}
-            style={[styles.chip, severity === level && styles.chipSelected]}
-            onPress={() => setSeverity(level)}
-          >
-            <Text style={[styles.chipText, severity === level && styles.chipTextSelected]}>
-              {level.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Incident Description *</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          multiline
+          numberOfLines={4}
+          placeholder="Describe what happened during the session..."
+          placeholderTextColor="#888888"
+          value={description}
+          onChangeText={setDescription}
+        />
       </View>
 
-      <TouchableOpacity
-        style={styles.toggleRow}
-        onPress={() => setBiteOccurred(!biteOccurred)}
-      >
-        <Text style={styles.toggleLabel}>Bite Occurred?</Text>
-        <Text style={styles.toggleValue}>{biteOccurred ? 'YES' : 'NO'}</Text>
-      </TouchableOpacity>
-
-      {biteOccurred && (
-        <View>
-          <Text style={styles.label}>Bite Location</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Left hand, Right forearm"
-            value={biteLocation}
-            onChangeText={setBiteLocation}
-          />
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={styles.toggleRow}
-        onPress={() => setMedicalAttentionRequired(!medicalAttentionRequired)}
-      >
-        <Text style={styles.toggleLabel}>Medical Attention Required?</Text>
-        <Text style={styles.toggleValue}>{medicalAttentionRequired ? 'YES' : 'NO'}</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Describe what happened..."
-        multiline
-        numberOfLines={4}
-        value={description}
-        onChangeText={setDescription}
-      />
-
-      <Text style={styles.label}>Attach Photo</Text>
-      <View style={styles.photoButtonRow}>
-        <TouchableOpacity style={styles.photoButton} onPress={handlePickImage}>
-          <Text style={styles.photoButtonText}>Choose Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
-          <Text style={styles.photoButtonText}>Take Photo</Text>
-        </TouchableOpacity>
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Immediate Action Taken</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          multiline
+          numberOfLines={3}
+          placeholder="What steps were taken immediately (e.g., first aid, client notified)..."
+          placeholderTextColor="#888888"
+          value={actionTaken}
+          onChangeText={setActionTaken}
+        />
       </View>
 
-      {imageUri && (
-        <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-        </View>
-      )}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.primaryButton, isSubmitting && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.buttonText}>
+            {isSubmitting ? 'Submitting...' : 'Submit Incident'}
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
-        onPress={handleSubmit}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitButtonText}>Submit Incident Report</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.secondaryButton]}
+          onPress={handleCancel}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.secondaryButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f9fafb' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, color: '#111827' },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginTop: 12, marginBottom: 6 },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-  },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  chipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
-  },
-  chipSelected: { backgroundColor: '#2563eb' },
-  chipText: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  chipTextSelected: { color: '#fff' },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  toggleLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  toggleValue: { fontSize: 14, fontWeight: 'bold', color: '#2563eb' },
-  photoButtonRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  photoButton: {
+  container: {
     flex: 1,
-    backgroundColor: '#e5e7eb',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#121212',
   },
-  photoButtonText: { color: '#374151', fontWeight: '600' },
-  imagePreviewContainer: { marginTop: 12, alignItems: 'center' },
-  imagePreview: { width: 200, height: 200, borderRadius: 8 },
-  submitButton: {
-    backgroundColor: '#2563eb',
+  content: {
     padding: 16,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    marginBottom: 20,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D1D5DB',
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: '#1E1E1E',
+    borderColor: '#374151',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    color: '#FFFFFF',
+    fontSize: 15,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    gap: 12,
+  },
+  button: {
+    paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 40,
   },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  primaryButton: {
+    backgroundColor: '#DC2626',
+  },
+  secondaryButton: {
+    backgroundColor: '#374151',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  secondaryButtonText: {
+    color: '#D1D5DB',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });

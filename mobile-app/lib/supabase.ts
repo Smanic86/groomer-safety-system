@@ -1,3 +1,8 @@
+/**
+ * Groomer Safety System
+ * Copyright (c) 2026 Shaun Hancock. All rights reserved.
+ * Confidential and Proprietary.
+ */
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';

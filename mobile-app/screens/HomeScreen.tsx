@@ -13,7 +13,7 @@ const CACHED_BUSINESS_ID_KEY = 'cached_user_business_id';
 export default function HomeScreen({ session }: { session: any }) {
   const [selectedPet, setSelectedPet] = useState<any>(null);
   const [mode, setMode] = useState<'detail' | 'assessment' | 'incident'>('detail');
-  const [businessId, setBusinessId] = useState<string>('default-business-id');
+  const [businessId, setBusinessId] = useState<string>('00000000-0000-0000-0000-000000000000');
 
   useEffect(() => {
     async function syncBusinessId() {

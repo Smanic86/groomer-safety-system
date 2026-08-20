@@ -1,195 +1,206 @@
+/**
+ * Copyright (c) 2026. All rights reserved.
+ * 
+ * Proprietary and confidential. Unauthorized copying or redistribution
+ * of this file, via any medium, is strictly prohibited.
+ */
+
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
-type RiskAssessmentProps = {
-  petId: string;
-  groomerId: string;
-  businessId: string;
-  onDone: () => void;
-};
+export default function RiskAssessmentScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const petId = route?.params?.petId;
 
-export default function RiskAssessmentScreen({
-  petId,
-  groomerId,
-  businessId,
-  onDone,
-}: RiskAssessmentProps) {
-  const [skinCondition, setSkinCondition] = useState('Clear');
-  const [earCondition, setEarCondition] = useState('Normal');
-  const [behavior, setBehavior] = useState('Calm');
-  const [mattingLevel, setMattingLevel] = useState('None');
-  const [notes, setNotes] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [temperament, setTemperament] = useState<string>('Calm');
+  const [skinCondition, setSkinCondition] = useState<string>('Clear');
+  const [earsEyes, setEarsEyes] = useState<string>('Normal');
+  const [mattingLevel, setMattingLevel] = useState<string>('None');
+  const [notes, setNotes] = useState<string>('');
+  const [saving, setSaving] = useState<boolean>(false);
 
-  async function handleSave() {
-    setIsSaving(true);
+  const handleGoBack = () => {
+    if (navigation && typeof navigation.goBack === 'function' && navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('PetDetailScreen', { petId });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!petId) {
+      Alert.alert('Error', 'No pet selected for risk assessment.');
+      return;
+    }
+
+    setSaving(true);
     try {
-      const assessmentSummary = `
-Behavior: ${behavior}
-Skin/Coat: ${skinCondition}
-Ears/Eyes: ${earCondition}
-Matting: ${mattingLevel}
-Additional Notes: ${notes}
-      `.trim();
+      const formattedNotes = `Ears/Eyes: ${earsEyes} | Notes: ${notes}`.trim();
 
-      const { error } = await supabase.from('risk_assessments').insert({
+      const { error } = await supabase.from('risk_assessments').upsert({
         pet_id: petId,
-        groomer_id: groomerId,
-        business_id: businessId,
-        notes: assessmentSummary,
-        created_at: new Date().toISOString(),
+        temperament_rating: temperament,
+        skin_condition: skinCondition,
+        matting_level: mattingLevel,
+        notes: formattedNotes,
+        updated_at: new Date().toISOString(),
       });
 
       if (error) throw error;
 
-      Alert.alert('Success', 'Pre-Groom Check saved!');
-      onDone();
+      Alert.alert('Success', 'Pre-groom check saved successfully!', [
+        { text: 'OK', onPress: () => handleGoBack() },
+      ]);
     } catch (err: any) {
-      console.log('Saved locally / finished check:', err?.message ?? err);
-      onDone();
+      Alert.alert('Save Error', err.message);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
-  }
+  };
 
   return (
-    <View style={styles.outerContainer}>
-      <View style={styles.topBar}>
-        <Pressable style={styles.backButton} onPress={onDone}>
-          <Text style={styles.backText}>← Back to Details</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Pre-Groom Check</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
+            <Text style={styles.backBtnText}>← Back to Details</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Pre-Groom Check</Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.label}>Temperament / Behavior</Text>
-        <View style={styles.buttonRow}>
+        <Text style={styles.sectionTitle}>Temperament / Behavior</Text>
+        <View style={styles.chipGroup}>
           {['Calm', 'Nervous', 'Aggressive', 'Excited'].map((option) => (
-            <Pressable
+            <TouchableOpacity
               key={option}
-              style={[styles.chip, behavior === option && styles.activeChip]}
-              onPress={() => setBehavior(option)}
+              style={[styles.chip, temperament === option && styles.chipActive]}
+              onPress={() => setTemperament(option)}
             >
-              <Text style={[styles.chipText, behavior === option && styles.activeChipText]}>
+              <Text style={[styles.chipText, temperament === option && styles.chipTextActive]}>
                 {option}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Skin & Coat Condition</Text>
-        <View style={styles.buttonRow}>
+        <Text style={styles.sectionTitle}>Skin & Coat Condition</Text>
+        <View style={styles.chipGroup}>
           {['Clear', 'Dry/Flaky', 'Fleas/Ticks', 'Irritated'].map((option) => (
-            <Pressable
+            <TouchableOpacity
               key={option}
-              style={[styles.chip, skinCondition === option && styles.activeChip]}
+              style={[styles.chip, skinCondition === option && styles.chipActive]}
               onPress={() => setSkinCondition(option)}
             >
-              <Text style={[styles.chipText, skinCondition === option && styles.activeChipText]}>
+              <Text style={[styles.chipText, skinCondition === option && styles.chipTextActive]}>
                 {option}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Ears & Eyes</Text>
-        <View style={styles.buttonRow}>
+        <Text style={styles.sectionTitle}>Ears & Eyes</Text>
+        <View style={styles.chipGroup}>
           {['Normal', 'Dirty/Infected', 'Discharge', 'Sensitive'].map((option) => (
-            <Pressable
+            <TouchableOpacity
               key={option}
-              style={[styles.chip, earCondition === option && styles.activeChip]}
-              onPress={() => setEarCondition(option)}
+              style={[styles.chip, earsEyes === option && styles.chipActive]}
+              onPress={() => setEarsEyes(option)}
             >
-              <Text style={[styles.chipText, earCondition === option && styles.activeChipText]}>
+              <Text style={[styles.chipText, earsEyes === option && styles.chipTextActive]}>
                 {option}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Matting Level</Text>
-        <View style={styles.buttonRow}>
+        <Text style={styles.sectionTitle}>Matting Level</Text>
+        <View style={styles.chipGroup}>
           {['None', 'Minor', 'Moderate', 'Severe'].map((option) => (
-            <Pressable
+            <TouchableOpacity
               key={option}
-              style={[styles.chip, mattingLevel === option && styles.activeChip]}
+              style={[styles.chip, mattingLevel === option && styles.chipActive]}
               onPress={() => setMattingLevel(option)}
             >
-              <Text style={[styles.chipText, mattingLevel === option && styles.activeChipText]}>
+              <Text style={[styles.chipText, mattingLevel === option && styles.chipTextActive]}>
                 {option}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Additional Safety Notes</Text>
+        <Text style={styles.sectionTitle}>Additional Safety Notes</Text>
         <TextInput
-          style={styles.textArea}
-          placeholder="Note any pre-existing injuries, warts, or sensitive spots..."
-          value={notes}
-          onChangeText={setNotes}
+          style={styles.textInput}
           multiline
           numberOfLines={4}
+          placeholder="Note any pre-existing injuries, warts, or sensitive spots..."
+          placeholderTextColor="#94a3b8"
+          value={notes}
+          onChangeText={setNotes}
         />
 
-        <Pressable 
-          style={[styles.submitButton, isSaving && { opacity: 0.7 }]} 
-          onPress={handleSave}
-          disabled={isSaving}
-        >
-          <Text style={styles.submitButtonText}>
-            {isSaving ? 'Saving...' : 'Complete & Save Check'}
-          </Text>
-        </Pressable>
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.saveBtnText}>Complete & Save Check</Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  outerContainer: { flex: 1, paddingTop: 40, paddingHorizontal: 16, backgroundColor: '#fff' },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  backButton: { paddingRight: 16 },
-  backText: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-  scrollContent: { paddingBottom: 60 },
-  label: { fontSize: 15, fontWeight: 'bold', color: '#374151', marginTop: 16, marginBottom: 8 },
-  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  content: { padding: 20, paddingTop: 10, paddingBottom: 40 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
+  backBtn: { paddingVertical: 4, paddingHorizontal: 4 },
+  backBtnText: { color: '#2563eb', fontWeight: '700', fontSize: 14 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b', marginTop: 16, marginBottom: 8 },
+  chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   chip: {
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: '#f1f5f9',
   },
-  activeChip: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  chipText: { fontSize: 14, color: '#374151', fontWeight: '500' },
-  activeChipText: { color: '#ffffff', fontWeight: 'bold' },
-  textArea: {
+  chipActive: { backgroundColor: '#2563eb' },
+  chipText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+  chipTextActive: { color: '#ffffff', fontWeight: '700' },
+  textInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
     padding: 12,
-    fontSize: 15,
+    fontSize: 13,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+    minHeight: 80,
     textAlignVertical: 'top',
-    marginTop: 4,
-    backgroundColor: '#fafafa',
+    marginBottom: 20,
   },
-  submitButton: {
+  saveBtn: {
     backgroundColor: '#16a34a',
-    padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 28,
+    marginTop: 10,
   },
-  submitButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  saveBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
 });
