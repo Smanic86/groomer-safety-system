@@ -18,7 +18,7 @@ import {
   Platform, 
   Alert 
 } from 'react-native';
-import { supabase } from '../utils/supabase'; // Adjust import path to your Supabase client
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   const [email, setEmail] = useState('');
@@ -54,7 +54,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
           password: password.trim(),
           options: {
             data: {
-              badge: ASSIGNED_TESTER_BADGE, // Assigns the BetaGroomer badge to user metadata
+              badge: ASSIGNED_TESTER_BADGE,
             },
           },
         });
@@ -77,7 +77,6 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         });
 
         if (error) throw error;
-        // Navigation handled by auth state listener in App root
       } catch (err: any) {
         Alert.alert('Sign In Failed', err.message || 'Check your credentials.');
       }
