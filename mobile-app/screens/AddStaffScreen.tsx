@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2026. All rights reserved.
+ * Copyright (c) 2026 Groomer Safety System. All rights reserved.
  * 
  * Proprietary and confidential. Unauthorized copying or redistribution
  * of this file, via any medium, is strictly prohibited.
@@ -31,8 +31,7 @@ export default function StaffScreen() {
     try {
       const { data, error } = await supabase
         .from('staff')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (error) throw error;
       setStaffList(data || []);
@@ -48,8 +47,8 @@ export default function StaffScreen() {
   }, [fetchStaff]);
 
   const handleAddStaff = async () => {
-    if (!staffName.trim() || !staffEmail.trim()) {
-      Alert.alert('Error', 'Please enter both staff name and email.');
+    if (!staffName.trim()) {
+      Alert.alert('Error', 'Please enter staff name.');
       return;
     }
 
@@ -57,9 +56,6 @@ export default function StaffScreen() {
       const { error } = await supabase.from('staff').insert([
         {
           name: staffName.trim(),
-          email: staffEmail.trim(),
-          role: 'Groomer',
-          created_at: new Date().toISOString(),
         },
       ]);
 
@@ -94,7 +90,7 @@ export default function StaffScreen() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Email Address"
+          placeholder="Email Address (Optional)"
           placeholderTextColor="#94a3b8"
           value={staffEmail}
           onChangeText={setStaffEmail}
@@ -112,13 +108,13 @@ export default function StaffScreen() {
         ) : (
           <FlatList
             data={staffList}
-            keyExtractor={(item) => item.id || item.email}
+            keyExtractor={(item) => item.id || item.name}
             ListEmptyComponent={<Text style={styles.emptyText}>No staff members added yet.</Text>}
             renderItem={({ item }) => (
               <View style={styles.staffCard}>
                 <View>
                   <Text style={styles.staffName}>{item.name}</Text>
-                  <Text style={styles.staffEmail}>{item.email}</Text>
+                  {item.email ? <Text style={styles.staffEmail}>{item.email}</Text> : null}
                 </View>
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleText}>{item.role || 'Groomer'}</Text>
