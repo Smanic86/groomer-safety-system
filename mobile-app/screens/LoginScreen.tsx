@@ -29,7 +29,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
   // Constants for Beta Tester Access
   const REQUIRED_BETA_CODE = 'BETAGROOMER2026';
-  const ASSIGNED_TESTER_BADGE = 'BetaGroomer';
+  const ASSIGNED_TESTER_BADGE = 'BetaSalon';
 
   const handleAuthAction = async () => {
     if (!email || !password) {
@@ -48,7 +48,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       }
 
       try {
-        // Register user with Supabase Auth
+        // Register user with Supabase Auth and assign the BetaSalon badge
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: password.trim(),
@@ -63,7 +63,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
         Alert.alert(
           'Registration Successful', 
-          `Welcome aboard! You have been granted the ${ASSIGNED_TESTER_BADGE} badge.`
+          `Welcome aboard! Your salon has been granted the ${ASSIGNED_TESTER_BADGE} badge.`
         );
       } catch (err: any) {
         Alert.alert('Registration Failed', err.message || 'An unexpected error occurred.');
@@ -92,7 +92,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     >
       <View style={styles.formCard}>
         <Text style={styles.title}>
-          {isRegistering ? 'Beta Registration' : 'Groomer Login'}
+          {isRegistering ? 'Beta Salon Registration' : 'Salon Login'}
         </Text>
         <Text style={styles.subtitle}>
           {isRegistering ? 'Enter your exclusive beta code to join.' : 'Access your salon dashboard.'}
