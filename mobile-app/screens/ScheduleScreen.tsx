@@ -21,6 +21,7 @@ export default function ScheduleScreen() {
   const [dogSearchQuery, setDogSearchQuery] = useState('');
   const [shiftDate, setShiftDate] = useState('');
   const [shiftTime, setShiftTime] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth());
@@ -42,7 +43,6 @@ export default function ScheduleScreen() {
     if (error) console.log('Error fetching staff list:', error.message);
     else if (data && data.length > 0) {
       setStaffList(data);
-      // Default to first staff member
       setSelectedStaff(data[0].name);
       setLoggedInStaffRole(data[0].role || 'groomer');
     }
@@ -51,7 +51,6 @@ export default function ScheduleScreen() {
   async function fetchShifts(currentStaff: string, role: string) {
     let query = supabase.from('staff_schedule').select('*');
     
-    // If user is a regular groomer, restrict to their name only
     if (role !== 'receptionist') {
       query = query.eq('staff_name', currentStaff);
     }
@@ -72,7 +71,10 @@ export default function ScheduleScreen() {
   );
 
   async function handleAddShift() {
+    if (isSubmitting) return; // Prevent double taps creating multiple entries
     if (!selectedStaff.trim() || !shiftDate.trim()) return;
+
+    setIsSubmitting(true);
     const { data, error } = await supabase.from('staff_schedule').insert([
       { 
         staff_name: selectedStaff.trim(), 
@@ -83,7 +85,7 @@ export default function ScheduleScreen() {
     ]).select();
 
     if (!error && data) {
-      setShifts([...shifts, data[0]]);
+      setShifts(prevShifts => [...prevShifts, data[0]]);
       setShiftDate('');
       setShiftTime('');
       setSelectedDog('');
@@ -91,6 +93,7 @@ export default function ScheduleScreen() {
     } else if (error) {
       console.log('Error adding shift:', error.message);
     }
+    setIsSubmitting(false);
   }
 
   async function handleRemoveShift(id: any) {
@@ -187,8 +190,12 @@ export default function ScheduleScreen() {
           value={shiftTime}
           onChangeText={setShiftTime}
         />
-        <TouchableOpacity style={styles.addButton} onPress={handleAddShift}>
-          <Text style={styles.addButtonText}>Book Appointment Slot</Text>
+        <TouchableOpacity 
+          style={[styles.addButton, isSubmitting && { opacity: 0.6 }]} 
+          onPress={handleAddShift}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.addButtonText}>{isSubmitting ? 'Booking...' : 'Book Appointment Slot'}</Text>
         </TouchableOpacity>
       </View>
 
