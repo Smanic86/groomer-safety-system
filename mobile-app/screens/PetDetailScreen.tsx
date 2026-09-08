@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
@@ -10,7 +10,6 @@ export default function PetDetailScreen() {
   const { dogId } = route.params || {};
   const [dog, setDog] = useState<any>(null);
   const [adding, setAdding] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (dogId) {
@@ -30,18 +29,18 @@ export default function PetDetailScreen() {
   async function handleAddToCancellations() {
     if (!dog) return;
     setAdding(true);
-    setSuccessMessage('');
     
     const { error } = await supabase.from('cancellations_backup').insert([
       { name: dog.name, breed: dog.breed || 'Unknown' }
     ]);
 
-    if (error) {
-      setSuccessMessage(`Error: ${error.message}`);
-    } else {
-      setSuccessMessage(`Success! ${dog.name} has been added to the cancellations backup list.`);
-    }
     setAdding(false);
+
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Success!', `${dog.name} has been successfully added to the cancellations list.`);
+    }
   }
 
   if (!dog) {
@@ -70,12 +69,6 @@ export default function PetDetailScreen() {
         <Text style={styles.breedText}>Breed: {dog.breed || 'Unknown Breed'}</Text>
         {dog.notes ? <Text style={styles.notesText}>Notes: {dog.notes}</Text> : null}
 
-        {successMessage ? (
-          <View style={[styles.banner, successMessage.startsWith('Error') ? styles.errorBanner : styles.successBanner]}>
-            <Text style={styles.bannerText}>{successMessage}</Text>
-          </View>
-        ) : null}
-
         <TouchableOpacity 
           style={styles.cancelButton} 
           onPress={handleAddToCancellations}
@@ -101,10 +94,6 @@ const styles = StyleSheet.create({
   dogName: { fontSize: 22, fontWeight: 'bold', color: '#2d3748', marginBottom: 5 },
   breedText: { fontSize: 16, color: '#718096', marginBottom: 10 },
   notesText: { fontSize: 14, color: '#4a5568', textAlign: 'center', marginBottom: 15 },
-  banner: { padding: 10, borderRadius: 6, width: '100%', marginBottom: 15, alignItems: 'center' },
-  successBanner: { backgroundColor: '#c6f6d5', borderColor: '#9ae6b4', borderWidth: 1 },
-  errorBanner: { backgroundColor: '#fed7d7', borderColor: '#feb2b2', borderWidth: 1 },
-  bannerText: { color: '#22543d', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   cancelButton: { backgroundColor: '#3182ce', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 6, width: '100%', alignItems: 'center' },
   cancelButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   emptyText: { textAlign: 'center', color: '#718096', marginTop: 30, fontSize: 15 }
