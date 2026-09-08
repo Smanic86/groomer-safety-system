@@ -1,155 +1,91 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
-type StaffMember = {
-  id: string;
-  full_name: string;
-  role?: string;
-};
-
-type StaffListScreenProps = {
-  navigation: any;
-  businessId?: string;
-  onAddStaff?: () => void;
-};
-
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#f5f5f5',
-    position: 'relative'
-  },
-  contentContainer: {
-    paddingBottom: 80
-  },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    marginBottom: 16 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: '700',
-    color: '#1a202c'
-  },
-  addButton: {
-    backgroundColor: '#3182ce',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14
-  },
-  card: { 
-    padding: 14, 
-    backgroundColor: '#fff', 
-    borderRadius: 8, 
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  staffName: { 
-    fontSize: 16, 
-    fontWeight: '600',
-    color: '#2d3748'
-  },
-  roleText: { 
-    fontSize: 12, 
-    color: '#718096',
-    marginTop: 2
-  },
-  empty: { 
-    textAlign: 'center', 
-    marginTop: 30, 
-    color: '#6b7280' 
-  },
-  copyrightContainer: { 
-    marginTop: 30, 
-    marginBottom: 20, 
-    alignItems: 'center' 
-  },
-  copyrightText: { 
-    fontSize: 12, 
-    color: '#9ca3af', 
-    textAlign: 'center' 
-  }
-});
-
-export default function StaffListScreen({ navigation, businessId, onAddStaff }: StaffListScreenProps) {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function StaffListScreen() {
+  const navigation = useNavigation<any>();
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [staffName, setStaffName] = useState('');
 
   useEffect(() => {
     fetchStaff();
   }, []);
 
   async function fetchStaff() {
-    setLoading(true);
-    let query = supabase.from('profiles').select('id, full_name, role');
-    
-    if (businessId) {
-      query = query.eq('business_id', businessId);
-    }
+    const { data } = await supabase.from('daily_allocations').select('*');
+    if (data) setStaffList(data);
+  }
 
-    const { data } = await query;
-
-    if (data) {
-      setStaff(data as StaffMember[]);
+  async function handleAddStaff() {
+    if (!staffName.trim()) return;
+    const { data, error } = await supabase.from('daily_allocations').insert([{ staff_name: staffName.trim(), assigned_dogs: '' }]).select();
+    if (!error && data) {
+      setStaffList([...staffList, data[0]]);
+      setStaffName('');
     }
-    setLoading(false);
+  }
+
+  async function handleRemove(id: any) {
+    const { error } = await supabase.from('daily_allocations').delete().eq('id', id);
+    if (!error) {
+      setStaffList(staffList.filter(item => item.id !== id));
+    }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Staff Members</Text>
-        {onAddStaff && (
-          <TouchableOpacity style={styles.addButton} onPress={onAddStaff}>
-            <Text style={styles.addButtonText}>+ Add Staff</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>← Back to Home</Text>
+      </TouchableOpacity>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#3182ce" style={{ marginTop: 20 }} />
-      ) : (
-        <FlatList
-          data={staff}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={
-            <Text style={styles.empty}>No staff members found.</Text>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View>
-                <Text style={styles.staffName}>{item.full_name}</Text>
-                <Text style={styles.roleText}>{item.role || 'Staff Member'}</Text>
-              </View>
-            </View>
-          )}
+      <Text style={styles.title}>Staff Rota & Allocations</Text>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="Add staff member name..."
+          placeholderTextColor="#a0aec0"
+          value={staffName}
+          onChangeText={setStaffName}
         />
-      )}
-
-      <View style={styles.copyrightContainer}>
-        <Text style={styles.copyrightText}>
-          © {new Date().getFullYear()} Groomer Safety System
-        </Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddStaff}>
+          <Text style={styles.addButtonText}>Add Staff</Text>
+        </TouchableOpacity>
       </View>
 
+      <FlatList
+        data={staffList}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+        renderItem={({ item }) => (
+          <View style={styles.rowItem}>
+            <View>
+              <Text style={styles.rowText}>{item.staff_name}</Text>
+              <Text style={styles.subText}>Assigned Dogs: {item.assigned_dogs || 'None'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleRemove(item.id)}>
+              <Text style={styles.removeText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
       <ReportButton />
-    </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
+  backButton: { marginBottom: 15 },
+  backButtonText: { color: '#3182ce', fontSize: 14, fontWeight: '600' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1a202c', marginBottom: 15 },
+  inputRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  input: { flex: 1, borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
+  addButton: { backgroundColor: '#3182ce', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 6 },
+  addButtonText: { color: '#fff', fontWeight: 'bold' },
+  rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
+  rowText: { fontSize: 16, color: '#2d3748', fontWeight: '600' },
+  subText: { fontSize: 13, color: '#718096', marginTop: 3 },
+  removeText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 }
+});
