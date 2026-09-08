@@ -11,10 +11,15 @@ const GROOMER_COLORS: { [key: string]: { bg: string; border: string; text: strin
 };
 
 const TIME_SLOTS = [
-  '9:00 AM - 11:00 AM',
-  '11:00 AM - 1:00 PM',
-  '1:00 PM - 3:00 PM',
-  '3:00 PM - 5:00 PM'
+  '9:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '1:00 PM',
+  '2:00 PM',
+  '3:00 PM',
+  '4:00 PM',
+  '5:00 PM'
 ];
 
 export default function ScheduleScreen() {
@@ -191,7 +196,7 @@ export default function ScheduleScreen() {
           editable={false}
         />
 
-        <Text style={styles.label}>Select Time Slot:</Text>
+        <Text style={styles.label}>Select Hour:</Text>
         <View style={styles.chipsContainer}>
           {TIME_SLOTS.map((slot) => (
             <TouchableOpacity
@@ -244,9 +249,8 @@ export default function ScheduleScreen() {
           
           const dayShifts = shifts.filter(s => {
             if (!s.date) return false;
-            const matchesDayNumber = s.date.includes(`${item.day}`);
-            const matchesMonth = s.date.toLowerCase().includes(monthNames[currentMonth].toLowerCase().substring(0, 3));
-            return matchesDayNumber && matchesMonth;
+            const targetDateStr = `${monthNames[currentMonth]} ${item.day}, ${currentYear}`;
+            return s.date.trim() === targetDateStr;
           });
 
           return (
