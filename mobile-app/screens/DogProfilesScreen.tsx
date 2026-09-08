@@ -18,6 +18,7 @@ export default function DogProfilesScreen() {
     if (error) {
       console.log('Error fetching dog profiles:', error.message);
     } else if (data) {
+      console.log('Fetched dog profiles:', data);
       setDogs(data);
     }
   }
