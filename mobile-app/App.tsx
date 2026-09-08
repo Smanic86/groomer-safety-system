@@ -15,7 +15,7 @@ import DogProfilesScreen from './screens/PetListScreen';
 import StaffScreen from './screens/StaffScreen';
 import ReportProblemScreen from './screens/ReportProblemScreen';
 import LoginScreen from './screens/LoginScreen';
-import CancellationsScreen from './screens/CancellationsScreen';
+import CancellationsScreen from './screens/CancellationScreen';
 
 const Stack = createNativeStackNavigator();
 const CURRENT_VERSION = "1.0.5";
