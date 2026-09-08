@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
+
+const GROOMER_COLORS: { [key: string]: { bg: string; border: string; text: string } } = {
+  'Sarah Jenkins': { bg: '#ebf8ff', border: '#bee3f8', text: '#2b6cb0' },
+  'David Smith': { bg: '#f0fff4', border: '#c6f6d5', text: '#22543d' },
+  'default': { bg: '#fffaf0', border: '#feebc8', text: '#c05621' }
+};
 
 export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
@@ -10,6 +16,7 @@ export default function ScheduleScreen() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [dogList, setDogList] = useState<any[]>([]);
   const [selectedStaff, setSelectedStaff] = useState('');
+  const [loggedInStaffRole, setLoggedInStaffRole] = useState('groomer');
   const [selectedDog, setSelectedDog] = useState('');
   const [dogSearchQuery, setDogSearchQuery] = useState('');
   const [shiftDate, setShiftDate] = useState('');
@@ -20,24 +27,38 @@ export default function ScheduleScreen() {
   const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
 
   useEffect(() => {
-    fetchShifts();
     fetchStaffMembers();
     fetchDogProfiles();
   }, []);
 
-  async function fetchShifts() {
-    const { data, error } = await supabase.from('staff_schedule').select('*');
-    if (error) console.log('Error fetching schedule:', error.message);
-    else if (data) setShifts(data);
-  }
+  useEffect(() => {
+    if (selectedStaff) {
+      fetchShifts(selectedStaff, loggedInStaffRole);
+    }
+  }, [selectedStaff, loggedInStaffRole]);
 
   async function fetchStaffMembers() {
     const { data, error } = await supabase.from('staff_members').select('*');
     if (error) console.log('Error fetching staff list:', error.message);
-    else if (data) {
+    else if (data && data.length > 0) {
       setStaffList(data);
-      if (data.length > 0) setSelectedStaff(data[0].name);
+      // Default to first staff member
+      setSelectedStaff(data[0].name);
+      setLoggedInStaffRole(data[0].role || 'groomer');
     }
+  }
+
+  async function fetchShifts(currentStaff: string, role: string) {
+    let query = supabase.from('staff_schedule').select('*');
+    
+    // If user is a regular groomer, restrict to their name only
+    if (role !== 'receptionist') {
+      query = query.eq('staff_name', currentStaff);
+    }
+
+    const { data, error } = await query;
+    if (error) console.log('Error fetching schedule:', error.message);
+    else if (data) setShifts(data);
   }
 
   async function fetchDogProfiles() {
@@ -96,20 +117,27 @@ export default function ScheduleScreen() {
       <Text style={styles.title}>Calendar Rota & Appointments</Text>
 
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Select Staff Member:</Text>
+        <Text style={styles.label}>Viewing As (Simulate Login / Role):</Text>
         <View style={styles.chipsContainer}>
           {staffList.map((staff) => (
             <TouchableOpacity
               key={staff.id}
               style={[styles.chip, selectedStaff === staff.name && styles.selectedChip]}
-              onPress={() => setSelectedStaff(staff.name)}
+              onPress={() => {
+                setSelectedStaff(staff.name);
+                setLoggedInStaffRole(staff.role || 'groomer');
+              }}
             >
               <Text style={[styles.chipText, selectedStaff === staff.name && styles.selectedChipText]}>
-                {staff.name}
+                {staff.name} {staff.role === 'receptionist' ? '⭐ (Receptionist)' : '✂️ (Groomer)'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {loggedInStaffRole === 'receptionist' && (
+          <Text style={styles.receptionistBanner}>Receptionist Mode: Managing all staff schedules & availability.</Text>
+        )}
 
         <Text style={styles.label}>Search & Assign Dog Profile:</Text>
         <TextInput
@@ -191,7 +219,12 @@ export default function ScheduleScreen() {
         {calendarCells.map((item, index) => {
           if (!item) return <View key={`empty-${index}`} style={styles.calendarCellEmpty} />;
           
-          const dayShifts = shifts.filter(s => s.date?.includes(`${item.day}`) && s.date?.toLowerCase().includes(monthNames[currentMonth].toLowerCase().substring(0, 3)));
+          const dayShifts = shifts.filter(s => {
+            if (!s.date) return false;
+            const matchesDayNumber = s.date.includes(`${item.day}`);
+            const matchesMonth = s.date.toLowerCase().includes(monthNames[currentMonth].toLowerCase().substring(0, 3));
+            return matchesDayNumber && matchesMonth;
+          });
 
           return (
             <TouchableOpacity 
@@ -200,32 +233,42 @@ export default function ScheduleScreen() {
               onPress={() => setShiftDate(item.dateString)}
             >
               <Text style={styles.cellDayNumber}>{item.day}</Text>
-              {dayShifts.map(s => (
-                <View key={s.id} style={styles.cellShiftBadge}>
-                  <Text style={styles.cellShiftText} numberOfLines={1}>{s.dog_name} ({s.staff_name})</Text>
-                </View>
-              ))}
+              {dayShifts.map(s => {
+                const theme = GROOMER_COLORS[s.staff_name] || GROOMER_COLORS['default'];
+                return (
+                  <View key={s.id} style={[styles.cellShiftBadge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                    <Text style={[styles.cellShiftText, { color: theme.text }]} numberOfLines={1}>
+                      {s.dog_name} {loggedInStaffRole === 'receptionist' ? `(${s.staff_name})` : ''}
+                    </Text>
+                  </View>
+                );
+              })}
             </TouchableOpacity>
           );
         })}
       </View>
 
       <View style={styles.listSection}>
-        <Text style={styles.sectionHeader}>All Booked Appointments</Text>
+        <Text style={styles.sectionHeader}>
+          {loggedInStaffRole === 'receptionist' ? 'All Booked Appointments (Receptionist View)' : `My Appointments (${selectedStaff})`}
+        </Text>
         {shifts.length === 0 ? (
           <Text style={styles.emptyText}>No appointments booked yet.</Text>
         ) : (
-          shifts.map((item) => (
-            <View key={item.id} style={styles.rowItem}>
-              <View>
-                <Text style={styles.rowText}>🐶 {item.dog_name || 'No Dog'} — Staff: {item.staff_name}</Text>
-                <Text style={styles.subText}>{item.date} | {item.time}</Text>
+          shifts.map((item) => {
+            const theme = GROOMER_COLORS[item.staff_name] || GROOMER_COLORS['default'];
+            return (
+              <View key={item.id} style={[styles.rowItem, { borderLeftColor: theme.text, borderLeftWidth: 4 }]}>
+                <View>
+                  <Text style={styles.rowText}>🐶 {item.dog_name || 'No Dog'} — Staff: <Text style={{ color: theme.text }}>{item.staff_name}</Text></Text>
+                  <Text style={styles.subText}>{item.date} | {item.time}</Text>
+                </View>
+                <TouchableOpacity onPress={() => handleRemoveShift(item.id)}>
+                  <Text style={styles.removeText}>Remove</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => handleRemoveShift(item.id)}>
-                <Text style={styles.removeText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          ))
+            );
+          })
         )}
       </View>
 
@@ -246,6 +289,7 @@ const styles = StyleSheet.create({
   selectedChip: { backgroundColor: '#3182ce', borderColor: '#3182ce' },
   chipText: { color: '#4a5568', fontSize: 14, fontWeight: '500' },
   selectedChipText: { color: '#fff' },
+  receptionistBanner: { backgroundColor: '#ebf8ff', color: '#2b6cb0', padding: 8, borderRadius: 6, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   searchResultsContainer: { backgroundColor: '#f7fafc', borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, maxHeight: 150, marginBottom: 5 },
   searchResultItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   searchResultText: { fontSize: 14, color: '#2d3748', fontWeight: '500' },
@@ -259,11 +303,11 @@ const styles = StyleSheet.create({
   weekDaysRow: { flexDirection: 'row', backgroundColor: '#edf2f7', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#cbd5e0' },
   weekDayText: { flex: 1, textAlign: 'center', fontWeight: 'bold', color: '#4a5568', fontSize: 13 },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e0', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, marginBottom: 20 },
-  calendarCellEmpty: { width: '14.28%', height: 75, backgroundColor: '#f7fafc', borderWidth: 0.5, borderColor: '#e2e8f0' },
-  calendarCell: { width: '14.28%', height: 75, backgroundColor: '#fff', borderWidth: 0.5, borderColor: '#e2e8f0', padding: 4 },
+  calendarCellEmpty: { width: '14.28%', height: 85, backgroundColor: '#f7fafc', borderWidth: 0.5, borderColor: '#e2e8f0' },
+  calendarCell: { width: '14.28%', height: 85, backgroundColor: '#fff', borderWidth: 0.5, borderColor: '#e2e8f0', padding: 4 },
   cellDayNumber: { fontSize: 12, fontWeight: 'bold', color: '#2d3748', marginBottom: 2 },
-  cellShiftBadge: { backgroundColor: '#ebf8ff', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 3, marginBottom: 2, borderWidth: 1, borderColor: '#bee3f8' },
-  cellShiftText: { fontSize: 9, color: '#2b6cb0', fontWeight: '600' },
+  cellShiftBadge: { borderRadius: 4, paddingVertical: 2, paddingHorizontal: 3, marginBottom: 2, borderWidth: 1 },
+  cellShiftText: { fontSize: 9, fontWeight: '600' },
   listSection: { marginBottom: 20 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#2d3748', marginBottom: 10 },
   rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
