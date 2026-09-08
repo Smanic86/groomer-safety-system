@@ -7,12 +7,14 @@ import ReportButton from '../components/ReportButton';
 export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
   const [shifts, setShifts] = useState<any[]>([]);
-  const [staffName, setStaffName] = useState('');
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState('');
   const [shiftDate, setShiftDate] = useState('');
   const [shiftTime, setShiftTime] = useState('');
 
   useEffect(() => {
     fetchShifts();
+    fetchStaffMembers();
   }, []);
 
   async function fetchShifts() {
@@ -24,11 +26,23 @@ export default function ScheduleScreen() {
     }
   }
 
+  async function fetchStaffMembers() {
+    const { data, error } = await supabase.from('staff_members').select('*');
+    if (error) {
+      console.log('Error fetching staff list:', error.message);
+    } else if (data) {
+      setStaffList(data);
+      if (data.length > 0) {
+        setSelectedStaff(data[0].name);
+      }
+    }
+  }
+
   async function handleAddShift() {
-    if (!staffName.trim() || !shiftDate.trim()) return;
+    if (!selectedStaff.trim() || !shiftDate.trim()) return;
     const { data, error } = await supabase.from('staff_schedule').insert([
       { 
-        staff_name: staffName.trim(), 
+        staff_name: selectedStaff.trim(), 
         date: shiftDate.trim(), 
         time: shiftTime.trim() || '9:00 AM - 5:00 PM' 
       }
@@ -36,7 +50,6 @@ export default function ScheduleScreen() {
 
     if (!error && data) {
       setShifts([...shifts, data[0]]);
-      setStaffName('');
       setShiftDate('');
       setShiftTime('');
     } else if (error) {
@@ -62,13 +75,31 @@ export default function ScheduleScreen() {
       <Text style={styles.title}>Staff Rota & Schedule</Text>
 
       <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Staff Member Name..."
-          placeholderTextColor="#a0aec0"
-          value={staffName}
-          onChangeText={setStaffName}
-        />
+        <Text style={styles.label}>Select Staff Member:</Text>
+        <View style={styles.staffChipsContainer}>
+          {staffList.length === 0 ? (
+            <Text style={styles.subText}>No staff members found. Please add staff first.</Text>
+          ) : (
+            staffList.map((staff) => (
+              <TouchableOpacity
+                key={staff.id}
+                style={[
+                  styles.chip,
+                  selectedStaff === staff.name && styles.selectedChip
+                ]}
+                onPress={() => setSelectedStaff(staff.name)}
+              >
+                <Text style={[
+                  styles.chipText,
+                  selectedStaff === staff.name && styles.selectedChipText
+                ]}>
+                  {staff.name}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
         <TextInput
           style={styles.input}
           placeholder="Date (e.g., Mon, Sep 14)..."
@@ -117,6 +148,12 @@ const styles = StyleSheet.create({
   backButtonText: { color: '#3182ce', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#1a202c', marginBottom: 15 },
   formContainer: { marginBottom: 20, gap: 10 },
+  label: { fontSize: 14, fontWeight: '600', color: '#4a5568' },
+  staffChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 5 },
+  chip: { backgroundColor: '#edf2f7', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#cbd5e0' },
+  selectedChip: { backgroundColor: '#3182ce', borderColor: '#3182ce' },
+  chipText: { color: '#4a5568', fontSize: 14, fontWeight: '500' },
+  selectedChipText: { color: '#fff' },
   input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
   addButton: { backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 6 },
   addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
