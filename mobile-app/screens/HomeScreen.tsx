@@ -1,9 +1,19 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    // Assuming your login screen route is named 'Login' or 'LoginScreen'
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  }
 
   return (
     <View style={styles.container}>
@@ -25,6 +35,10 @@ export default function HomeScreen() {
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Cancellation')}>
         <Text style={styles.buttonText}>Cancellations</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Log Out</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -34,5 +48,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: 'bold', color: '#1a202c', marginBottom: 5, textAlign: 'center' },
   subtitle: { fontSize: 16, color: '#4a5568', marginBottom: 30, textAlign: 'center' },
   button: { backgroundColor: '#3182ce', padding: 16, borderRadius: 8, marginBottom: 15, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' }
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  logoutButton: { backgroundColor: '#e53e3e', padding: 14, borderRadius: 8, marginTop: 15, alignItems: 'center' },
+  logoutButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' }
 });
