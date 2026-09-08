@@ -14,8 +14,12 @@ export default function DogProfilesScreen() {
   }, []);
 
   async function fetchDogs() {
-    const { data } = await supabase.from('dog_profiles').select('*');
-    if (data) setDogs(data);
+    const { data, error } = await supabase.from('dog_profiles').select('*');
+    if (error) {
+      console.log('Error fetching dog profiles:', error.message);
+    } else if (data) {
+      setDogs(data);
+    }
   }
 
   const filteredDogs = dogs.filter(dog => 
@@ -56,6 +60,9 @@ export default function DogProfilesScreen() {
             </View>
           </TouchableOpacity>
         )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No dog profiles found.</Text>
+        }
       />
       <ReportButton />
     </View>
@@ -72,5 +79,6 @@ const styles = StyleSheet.create({
   dogImage: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#cbd5e0' },
   infoContainer: { marginLeft: 15, flex: 1 },
   dogName: { fontSize: 16, fontWeight: 'bold', color: '#2d3748' },
-  breedText: { fontSize: 14, color: '#718096', marginTop: 2 }
+  breedText: { fontSize: 14, color: '#718096', marginTop: 2 },
+  emptyText: { textAlign: 'center', color: '#718096', marginTop: 30, fontSize: 15 }
 });
