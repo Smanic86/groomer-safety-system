@@ -10,6 +10,13 @@ const GROOMER_COLORS: { [key: string]: { bg: string; border: string; text: strin
   'default': { bg: '#fffaf0', border: '#feebc8', text: '#c05621' }
 };
 
+const TIME_SLOTS = [
+  '9:00 AM - 11:00 AM',
+  '11:00 AM - 1:00 PM',
+  '1:00 PM - 3:00 PM',
+  '3:00 PM - 5:00 PM'
+];
+
 export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
   const [shifts, setShifts] = useState<any[]>([]);
@@ -20,7 +27,7 @@ export default function ScheduleScreen() {
   const [selectedDog, setSelectedDog] = useState('');
   const [dogSearchQuery, setDogSearchQuery] = useState('');
   const [shiftDate, setShiftDate] = useState('');
-  const [shiftTime, setShiftTime] = useState('');
+  const [shiftTime, setShiftTime] = useState(TIME_SLOTS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentDate = new Date();
@@ -71,8 +78,8 @@ export default function ScheduleScreen() {
   );
 
   async function handleAddShift() {
-    if (isSubmitting) return; // Prevent double taps creating multiple entries
-    if (!selectedStaff.trim() || !shiftDate.trim()) return;
+    if (isSubmitting) return;
+    if (!selectedStaff.trim() || !shiftDate.trim() || !shiftTime.trim()) return;
 
     setIsSubmitting(true);
     const { data, error } = await supabase.from('staff_schedule').insert([
@@ -80,14 +87,13 @@ export default function ScheduleScreen() {
         staff_name: selectedStaff.trim(), 
         dog_name: selectedDog.trim() || 'No Dog Assigned',
         date: shiftDate.trim(), 
-        time: shiftTime.trim() || '9:00 AM - 5:00 PM' 
+        time: shiftTime.trim()
       }
     ]).select();
 
     if (!error && data) {
       setShifts(prevShifts => [...prevShifts, data[0]]);
       setShiftDate('');
-      setShiftTime('');
       setSelectedDog('');
       setDogSearchQuery('');
     } else if (error) {
@@ -176,20 +182,30 @@ export default function ScheduleScreen() {
           <Text style={styles.selectedDogIndicator}>Selected Dog: <Text style={{fontWeight: 'bold'}}>{selectedDog}</Text></Text>
         ) : null}
 
+        <Text style={styles.label}>Selected Date (Click calendar day below):</Text>
         <TextInput
           style={styles.input}
-          placeholder="Date (e.g., September 14, 2026)..."
+          placeholder="Select a day from the calendar grid..."
           placeholderTextColor="#a0aec0"
           value={shiftDate}
-          onChangeText={setShiftDate}
+          editable={false}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Time Slot (e.g., 9:00 AM - 11:00 AM)..."
-          placeholderTextColor="#a0aec0"
-          value={shiftTime}
-          onChangeText={setShiftTime}
-        />
+
+        <Text style={styles.label}>Select Time Slot:</Text>
+        <View style={styles.chipsContainer}>
+          {TIME_SLOTS.map((slot) => (
+            <TouchableOpacity
+              key={slot}
+              style={[styles.chip, shiftTime === slot && styles.selectedChip]}
+              onPress={() => setShiftTime(slot)}
+            >
+              <Text style={[styles.chipText, shiftTime === slot && styles.selectedChipText]}>
+                {slot}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <TouchableOpacity 
           style={[styles.addButton, isSubmitting && { opacity: 0.6 }]} 
           onPress={handleAddShift}
