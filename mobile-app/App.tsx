@@ -17,8 +17,12 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [betaCode, setBetaCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Set your required beta invite code here
+  const VALID_BETA_CODE = 'GROOMER2026';
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,15 +41,8 @@ export default function App() {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (isSignUp) {
-      // Check if email is in the allowed beta testers table
-      const { data: betaCheck, error: betaError } = await supabase
-        .from('beta_testers')
-        .select('*')
-        .eq('email', trimmedEmail)
-        .single();
-
-      if (betaError || !betaCheck) {
-        Alert.alert('Access Denied', 'This email is not authorized as a beta tester.');
+      if (betaCode.trim() !== VALID_BETA_CODE) {
+        Alert.alert('Invalid Beta Code', 'Please enter a valid beta tester code to sign up.');
         setLoading(false);
         return;
       }
@@ -92,6 +89,17 @@ export default function App() {
           onChangeText={setPassword}
           secureTextEntry
         />
+
+        {isSignUp && (
+          <TextInput
+            style={loginStyles.input}
+            placeholder="Beta Access Code"
+            placeholderTextColor="#a0aec0"
+            value={betaCode}
+            onChangeText={setBetaCode}
+            autoCapitalize="characters"
+          />
+        )}
         
         <TouchableOpacity style={loginStyles.button} onPress={handleAuth} disabled={loading}>
           <Text style={loginStyles.buttonText}>
