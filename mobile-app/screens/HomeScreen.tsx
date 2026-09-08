@@ -10,9 +10,8 @@ export default function HomeScreen() {
       <Text style={styles.title}>Groomer Safety System</Text>
       <Text style={styles.subtitle}>Welcome back! Select a section below:</Text>
 
-      {/* Routes directly to the new Staff Rota / Allocations screen */}
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('StaffList')}>
-        <Text style={styles.buttonText}>Staff Rota</Text>
+        <Text style={styles.buttonText}>Staff Members</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Schedule')}>
@@ -23,7 +22,6 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>Dog Profiles</Text>
       </TouchableOpacity>
 
-      {/* Routes to the newly added Cancellations screen */}
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Cancellation')}>
         <Text style={styles.buttonText}>Cancellations</Text>
       </TouchableOpacity>
