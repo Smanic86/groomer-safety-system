@@ -1,41 +1,41 @@
-/**
- * Screen: Cancellation List
- * Application: Groomer Safety System
- */
-
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
-export default function CancellationsScreen() {
+export default function CancellationScreen() {
   const navigation = useNavigation<any>();
-  const [cancellations, setCancellations] = useState<any[]>([]);
-  const [clientName, setClientName] = useState('');
+  const [backupDogs, setBackupDogs] = useState<any[]>([]);
+  const [dogName, setDogName] = useState('');
+  const [breed, setBreed] = useState('');
 
   useEffect(() => {
-    fetchCancellations();
+    fetchBackupDogs();
   }, []);
 
-  async function fetchCancellations() {
-    const { data } = await supabase.from('cancellations').select('*');
-    if (data) setCancellations(data);
+  async function fetchBackupDogs() {
+    const { data } = await supabase.from('cancellations_backup').select('*');
+    if (data) setBackupDogs(data);
   }
 
-  async function handleAddCancellation() {
-    if (!clientName.trim()) return;
-    const { data, error } = await supabase.from('cancellations').insert([{ client_name: clientName.trim() }]).select();
+  async function handleAddDog() {
+    if (!dogName.trim()) return;
+    const { data, error } = await supabase.from('cancellations_backup').insert([
+      { name: dogName.trim(), breed: breed.trim() || 'Unknown' }
+    ]).select();
+
     if (!error && data) {
-      setCancellations([...cancellations, data[0]]);
-      setClientName('');
+      setBackupDogs([...backupDogs, data[0]]);
+      setDogName('');
+      setBreed('');
     }
   }
 
-  async function handleRemove(id: any) {
-    const { error } = await supabase.from('cancellations').delete().eq('id', id);
+  async function handleRemoveDog(id: any) {
+    const { error } = await supabase.from('cancellations_backup').delete().eq('id', id);
     if (!error) {
-      setCancellations(cancellations.filter(c => c.id !== id));
+      setBackupDogs(backupDogs.filter(item => item.id !== id));
     }
   }
 
@@ -45,28 +45,38 @@ export default function CancellationsScreen() {
         <Text style={styles.backButtonText}>← Back to Home</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Cancellation List</Text>
+      <Text style={styles.title}>Cancellations & Backup Dogs</Text>
 
-      <View style={styles.inputRow}>
+      <View style={styles.formContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Add cancelled slot / client..."
+          placeholder="Dog Name..."
           placeholderTextColor="#a0aec0"
-          value={clientName}
-          onChangeText={setClientName}
+          value={dogName}
+          onChangeText={setDogName}
         />
-        <TouchableOpacity style={styles.addButton} onPress={handleAddCancellation}>
-          <Text style={styles.addButtonText}>Add</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Breed..."
+          placeholderTextColor="#a0aec0"
+          value={breed}
+          onChangeText={setBreed}
+        />
+        <TouchableOpacity style={styles.addButton} onPress={handleAddDog}>
+          <Text style={styles.addButtonText}>Add to Backup List</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={cancellations}
+        data={backupDogs}
         keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
         renderItem={({ item }) => (
           <View style={styles.rowItem}>
-            <Text style={styles.rowText}>{item.client_name}</Text>
-            <TouchableOpacity onPress={() => handleRemove(item.id)}>
+            <View>
+              <Text style={styles.rowText}>{item.name}</Text>
+              <Text style={styles.subText}>Breed: {item.breed}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleRemoveDog(item.id)}>
               <Text style={styles.removeText}>Remove</Text>
             </TouchableOpacity>
           </View>
@@ -82,11 +92,12 @@ const styles = StyleSheet.create({
   backButton: { marginBottom: 15 },
   backButtonText: { color: '#3182ce', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#1a202c', marginBottom: 15 },
-  inputRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
-  addButton: { backgroundColor: '#3182ce', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 6 },
-  addButtonText: { color: '#fff', fontWeight: 'bold' },
+  formContainer: { marginBottom: 20, gap: 10 },
+  input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
+  addButton: { backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 6 },
+  addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
-  rowText: { fontSize: 15, color: '#2d3748', fontWeight: '600' },
+  rowText: { fontSize: 16, color: '#2d3748', fontWeight: '600' },
+  subText: { fontSize: 13, color: '#718096', marginTop: 3 },
   removeText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 }
 });
