@@ -12,13 +12,18 @@ export default function ScheduleScreen() {
   const [shiftDate, setShiftDate] = useState('');
   const [shiftTime, setShiftTime] = useState('');
 
+  // Calendar state
+  const currentDate = new Date();
+  const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth());
+  const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
+
   useEffect(() => {
     fetchShifts();
     fetchStaffMembers();
   }, []);
 
   async function fetchShifts() {
-    const { data, error } = await supabase.from('staff_schedule').select('*').order('date', { ascending: true });
+    const { data, error } = await supabase.from('staff_schedule').select('*');
     if (error) {
       console.log('Error fetching schedule:', error.message);
     } else if (data) {
@@ -52,7 +57,6 @@ export default function ScheduleScreen() {
       setShifts([...shifts, data[0]]);
       setShiftDate('');
       setShiftTime('');
-      fetchShifts(); // Refresh to sort
     } else if (error) {
       console.log('Error adding shift:', error.message);
     }
@@ -67,13 +71,19 @@ export default function ScheduleScreen() {
     }
   }
 
-  // Group shifts by date for a calendar-like view
-  const groupedShifts = shifts.reduce((acc, shift) => {
-    const dateKey = shift.date || 'Unscheduled Date';
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(shift);
-    return acc;
-  }, {});
+  // Generate calendar days for the current month view
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const calendarCells = [];
+  for (let i = 0; i < firstDayIndex; i++) {
+    calendarCells.push(null); // Blank padding cells
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const formattedDateString = `${monthNames[currentMonth]} ${day}, ${currentYear}`;
+    calendarCells.push({ day, dateString: formattedDateString });
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -111,7 +121,7 @@ export default function ScheduleScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Date (e.g., Mon, Sep 14)..."
+          placeholder="Date (e.g., September 14, 2026)..."
           placeholderTextColor="#a0aec0"
           value={shiftDate}
           onChangeText={setShiftDate}
@@ -128,27 +138,72 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.calendarContainer}>
-        <Text style={styles.sectionHeader}>Upcoming Rota Days</Text>
-        {Object.keys(groupedShifts).length === 0 ? (
-          <Text style={styles.emptyText}>No shifts scheduled yet.</Text>
-        ) : (
-          Object.keys(groupedShifts).map((date) => (
-            <View key={date} style={styles.dayCard}>
-              <View style={styles.dateHeader}>
-                <Text style={styles.dateHeaderText}>{date}</Text>
-              </View>
-              {groupedShifts[date].map((shift: any) => (
-                <View key={shift.id} style={styles.shiftRow}>
-                  <View>
-                    <Text style={styles.rowText}>{shift.staff_name}</Text>
-                    <Text style={styles.subText}>{shift.time}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleRemoveShift(shift.id)}>
-                    <Text style={styles.removeText}>Remove</Text>
-                  </TouchableOpacity>
+      {/* Calendar Header Controls */}
+      <View style={styles.calendarHeader}>
+        <TouchableOpacity onPress={() => {
+          if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
+          else { setCurrentMonth(currentMonth - 1); }
+        }}>
+          <Text style={styles.monthNavText}>◀ Prev</Text>
+        </TouchableOpacity>
+        <Text style={styles.monthTitleText}>{monthNames[currentMonth]} {currentYear}</Text>
+        <TouchableOpacity onPress={() => {
+          if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); }
+          else { setCurrentMonth(currentMonth + 1); }
+        }}>
+          <Text style={styles.monthNavText}>Next ▶</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Days of Week Header */}
+      <View style={styles.weekDaysRow}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, index) => (
+          <Text key={index} style={styles.weekDayText}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Calendar Grid */}
+      <View style={styles.calendarGrid}>
+        {calendarCells.map((item, index) => {
+          if (!item) {
+            return <View key={`empty-${index}`} style={styles.calendarCellEmpty} />;
+          }
+
+          // Find shifts matching this exact day string or numeric day format
+          const dayShifts = shifts.filter(s => s.date?.includes(`${item.day}`) && s.date?.toLowerCase().includes(monthNames[currentMonth].toLowerCase().substring(0, 3)));
+
+          return (
+            <TouchableOpacity 
+              key={`day-${item.day}`} 
+              style={styles.calendarCell}
+              onPress={() => setShiftDate(item.dateString)}
+            >
+              <Text style={styles.cellDayNumber}>{item.day}</Text>
+              {dayShifts.map(s => (
+                <View key={s.id} style={styles.cellShiftBadge}>
+                  <Text style={styles.cellShiftText} numberOfLines={1}>{s.staff_name}</Text>
                 </View>
               ))}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Scheduled List Breakdown */}
+      <View style={styles.listSection}>
+        <Text style={styles.sectionHeader}>All Assigned Shifts</Text>
+        {shifts.length === 0 ? (
+          <Text style={styles.emptyText}>No shifts scheduled yet.</Text>
+        ) : (
+          shifts.map((item) => (
+            <View key={item.id} style={styles.rowItem}>
+              <View>
+                <Text style={styles.rowText}>{item.staff_name}</Text>
+                <Text style={styles.subText}>{item.date} | {item.time}</Text>
+              </View>
+              <TouchableOpacity onPress={() => handleRemoveShift(item.id)}>
+                <Text style={styles.removeText}>Remove</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -174,14 +229,22 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
   addButton: { backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 6 },
   addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  calendarContainer: { marginBottom: 20 },
+  calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#2b6cb0', padding: 12, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+  monthTitleText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  monthNavText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  weekDaysRow: { flexDirection: 'row', backgroundColor: '#edf2f7', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#cbd5e0' },
+  weekDayText: { flex: 1, textAlign: 'center', fontWeight: 'bold', color: '#4a5568', fontSize: 13 },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e0', borderBottomLeftRadius: 8, borderBottomRightRadius: 8, marginBottom: 20 },
+  calendarCellEmpty: { width: '14.28%', height: 75, backgroundColor: '#f7fafc', borderWidth: 0.5, borderColor: '#e2e8f0' },
+  calendarCell: { width: '14.28%', height: 75, backgroundColor: '#fff', borderWidth: 0.5, borderColor: '#e2e8f0', padding: 4 },
+  cellDayNumber: { fontSize: 12, fontWeight: 'bold', color: '#2d3748', marginBottom: 2 },
+  cellShiftBadge: { backgroundColor: '#ebf8ff', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 3, marginBottom: 2, borderWidth: 1, borderColor: '#bee3f8' },
+  cellShiftText: { fontSize: 10, color: '#2b6cb0', fontWeight: '600' },
+  listSection: { marginBottom: 20 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#2d3748', marginBottom: 10 },
-  dayCard: { backgroundColor: '#fff', borderRadius: 8, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
-  dateHeader: { backgroundColor: '#edf2f7', padding: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  dateHeaderText: { fontWeight: 'bold', color: '#2b6cb0', fontSize: 15 },
-  shiftRow: { padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f7fafc' },
+  rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
   rowText: { fontSize: 16, color: '#2d3748', fontWeight: '600' },
-  subText: { fontSize: 13, color: '#718096', marginTop: 2 },
+  subText: { fontSize: 13, color: '#718096', marginTop: 3 },
   removeText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 },
   emptyText: { textAlign: 'center', color: '#718096', marginTop: 15, fontSize: 15 }
 });
