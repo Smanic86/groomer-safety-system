@@ -7,12 +7,16 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    // Assuming your login screen route is named 'Login' or 'LoginScreen'
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      // Replace 'Login' with whatever your login route name is in App.tsx
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } else {
+      console.log('Error signing out:', error.message);
+    }
   }
 
   return (
