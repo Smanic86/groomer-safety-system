@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
@@ -18,7 +18,7 @@ export default function ScheduleScreen() {
   }, []);
 
   async function fetchShifts() {
-    const { data, error } = await supabase.from('staff_schedule').select('*');
+    const { data, error } = await supabase.from('staff_schedule').select('*').order('date', { ascending: true });
     if (error) {
       console.log('Error fetching schedule:', error.message);
     } else if (data) {
@@ -52,6 +52,7 @@ export default function ScheduleScreen() {
       setShifts([...shifts, data[0]]);
       setShiftDate('');
       setShiftTime('');
+      fetchShifts(); // Refresh to sort
     } else if (error) {
       console.log('Error adding shift:', error.message);
     }
@@ -66,13 +67,21 @@ export default function ScheduleScreen() {
     }
   }
 
+  // Group shifts by date for a calendar-like view
+  const groupedShifts = shifts.reduce((acc, shift) => {
+    const dateKey = shift.date || 'Unscheduled Date';
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(shift);
+    return acc;
+  }, {});
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Text style={styles.backButtonText}>← Back to Home</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Staff Rota & Schedule</Text>
+      <Text style={styles.title}>Calendar Rota & Schedule</Text>
 
       <View style={styles.formContainer}>
         <Text style={styles.label}>Select Staff Member:</Text>
@@ -119,26 +128,34 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={shifts}
-        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-        renderItem={({ item }) => (
-          <View style={styles.rowItem}>
-            <View>
-              <Text style={styles.rowText}>{item.staff_name}</Text>
-              <Text style={styles.subText}>{item.date} | {item.time}</Text>
-            </View>
-            <TouchableOpacity onPress={() => handleRemoveShift(item.id)}>
-              <Text style={styles.removeText}>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        ListEmptyComponent={
+      <View style={styles.calendarContainer}>
+        <Text style={styles.sectionHeader}>Upcoming Rota Days</Text>
+        {Object.keys(groupedShifts).length === 0 ? (
           <Text style={styles.emptyText}>No shifts scheduled yet.</Text>
-        }
-      />
+        ) : (
+          Object.keys(groupedShifts).map((date) => (
+            <View key={date} style={styles.dayCard}>
+              <View style={styles.dateHeader}>
+                <Text style={styles.dateHeaderText}>{date}</Text>
+              </View>
+              {groupedShifts[date].map((shift: any) => (
+                <View key={shift.id} style={styles.shiftRow}>
+                  <View>
+                    <Text style={styles.rowText}>{shift.staff_name}</Text>
+                    <Text style={styles.subText}>{shift.time}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleRemoveShift(shift.id)}>
+                    <Text style={styles.removeText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ))
+        )}
+      </View>
+
       <ReportButton />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -147,7 +164,7 @@ const styles = StyleSheet.create({
   backButton: { marginBottom: 15 },
   backButtonText: { color: '#3182ce', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#1a202c', marginBottom: 15 },
-  formContainer: { marginBottom: 20, gap: 10 },
+  formContainer: { marginBottom: 20, gap: 10, backgroundColor: '#fff', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
   label: { fontSize: 14, fontWeight: '600', color: '#4a5568' },
   staffChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 5 },
   chip: { backgroundColor: '#edf2f7', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#cbd5e0' },
@@ -157,9 +174,14 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
   addButton: { backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 6 },
   addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
+  calendarContainer: { marginBottom: 20 },
+  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#2d3748', marginBottom: 10 },
+  dayCard: { backgroundColor: '#fff', borderRadius: 8, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
+  dateHeader: { backgroundColor: '#edf2f7', padding: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  dateHeaderText: { fontWeight: 'bold', color: '#2b6cb0', fontSize: 15 },
+  shiftRow: { padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f7fafc' },
   rowText: { fontSize: 16, color: '#2d3748', fontWeight: '600' },
-  subText: { fontSize: 13, color: '#718096', marginTop: 3 },
+  subText: { fontSize: 13, color: '#718096', marginTop: 2 },
   removeText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 },
-  emptyText: { textAlign: 'center', color: '#718096', marginTop: 30, fontSize: 15 }
+  emptyText: { textAlign: 'center', color: '#718096', marginTop: 15, fontSize: 15 }
 });
