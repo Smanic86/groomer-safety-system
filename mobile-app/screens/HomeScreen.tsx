@@ -1,116 +1,54 @@
-import { useState, useEffect } from 'react';
-import { View, Button, StyleSheet } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
-import PetListScreen from './PetListScreen';
-import SafetyCheckScreen from './SafetyCheckScreen';
-import RiskAssessmentScreen from './RiskAssessmentScreen';
-import IncidentReportScreen from './IncidentReportScreen';
+/**
+ * Screen: Home
+ * Application: Groomer Safety System
+ */
 
-const CACHED_BUSINESS_ID_KEY = 'cached_user_business_id';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import ReportButton from '../components/ReportButton';
 
-export default function HomeScreen({ session }: { session: any }) {
-  const [selectedPet, setSelectedPet] = useState<any>(null);
-  const [mode, setMode] = useState<'detail' | 'assessment' | 'incident'>('detail');
-  const [businessId, setBusinessId] = useState<string>('00000000-0000-0000-0000-000000000000');
+export default function HomeScreen() {
+  const navigation = useNavigation<any>();
 
-  useEffect(() => {
-    async function syncBusinessId() {
-      try {
-        const cached = await AsyncStorage.getItem(CACHED_BUSINESS_ID_KEY);
-        if (cached) setBusinessId(cached);
-
-        const netState = await NetInfo.fetch();
-        if (netState.isConnected && session?.user?.id) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('business_id')
-            .eq('id', session.user.id)
-            .single();
-
-          if (data?.business_id) {
-            setBusinessId(data.business_id);
-            await AsyncStorage.setItem(CACHED_BUSINESS_ID_KEY, data.business_id);
-          }
-        }
-      } catch (err) {
-        console.error('Error syncing business ID:', err);
-      }
-    }
-
-    syncBusinessId();
-  }, [session?.user?.id]);
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-  }
-
-  // 1. Risk Assessment Screen
-  if (selectedPet && mode === 'assessment') {
-    return (
-      <View style={{ flex: 1 }}>
-        <RiskAssessmentScreen
-          petId={selectedPet.id}
-          groomerId={session?.user?.id ?? 'demo-groomer'}
-          businessId={businessId}
-          onDone={() => setMode('detail')}
-        />
-      </View>
-    );
-  }
-
-  // 2. Incident Report Screen
-  if (selectedPet && mode === 'incident') {
-    return (
-      <View style={{ flex: 1 }}>
-        <IncidentReportScreen
-          petId={selectedPet.id}
-          groomerId={session?.user?.id ?? 'demo-groomer'}
-          businessId={businessId}
-          onDone={() => setMode('detail')}
-          onCancel={() => setMode('detail')}
-        />
-      </View>
-    );
-  }
-
-  // 3. Pet Safety Check Screen
-  if (selectedPet) {
-    return (
-      <View style={{ flex: 1 }}>
-        <SafetyCheckScreen
-          pet={selectedPet}
-          groomerId={session?.user?.id ?? 'demo-groomer'}
-          businessId={businessId}
-          onBack={() => {
-            setSelectedPet(null);
-            setMode('detail');
-          }}
-          onStartAssessment={() => setMode('assessment')}
-          onLogIncident={() => setMode('incident')}
-        />
-      </View>
-    );
-  }
-
-  // 4. Pet List Screen
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Button title="Log Out" onPress={handleLogout} />
+        <Text style={styles.title}>Groomer Safety System</Text>
+        <Text style={styles.subtitle}>Welcome back! Select a section below:</Text>
       </View>
-      <PetListScreen 
-        onSelectPet={(pet) => {
-          setSelectedPet(pet);
-          setMode('detail');
-        }} 
-      />
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Staff')}>
+          <Text style={styles.primaryButtonText}>Staff Rota & Daily Dogs</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Schedule')}>
+          <Text style={styles.secondaryButtonText}>Schedule</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DogProfiles')}>
+          <Text style={styles.secondaryButtonText}>Dog Profiles</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Cancellations')}>
+          <Text style={styles.secondaryButtonText}>Cancellation List</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ReportButton />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingTop: 50, paddingHorizontal: 16, alignItems: 'flex-end' },
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
+  header: { marginBottom: 30, marginTop: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#1a202c', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#718096' },
+  buttonContainer: { gap: 12, marginBottom: 20 },
+  primaryButton: { backgroundColor: '#3182ce', padding: 16, borderRadius: 8, alignItems: 'center' },
+  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  secondaryButton: { backgroundColor: '#fff', padding: 16, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
+  secondaryButtonText: { color: '#2d3748', fontSize: 15, fontWeight: '600' }
 });

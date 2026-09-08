@@ -1,149 +1,156 @@
-/**
- * Copyright (c) 2026 Groomer Safety System. All rights reserved.
- * 
- * Proprietary and confidential. Unauthorized copying or redistribution
- * of this file, via any medium, is strictly prohibited.
- */
-
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import ReportButton from '../components/ReportButton';
 
-export default function StaffScreen() {
-  const navigation: any = useNavigation();
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [staffName, setStaffName] = useState('');
-  const [staffEmail, setStaffEmail] = useState('');
-  const [loading, setLoading] = useState(true);
+type AddStaffScreenProps = {
+  navigation: any;
+  businessId?: string;
+  onSuccess?: () => void;
+};
 
-  const fetchStaff = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*');
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5',
+    position: 'relative'
+  },
+  contentContainer: {
+    paddingBottom: 80
+  },
+  backButton: { 
+    marginBottom: 10 
+  },
+  backText: { 
+    color: '#3182ce', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  header: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1a202c', 
+    marginBottom: 15 
+  },
+  form: { 
+    backgroundColor: '#fff', 
+    padding: 15, 
+    borderRadius: 8, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
+  label: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#4a5568', 
+    marginTop: 10, 
+    marginBottom: 5 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#cbd5e0', 
+    borderRadius: 6, 
+    padding: 10, 
+    fontSize: 14, 
+    backgroundColor: '#fff' 
+  },
+  button: { 
+    backgroundColor: '#2b6cb0', 
+    padding: 12, 
+    borderRadius: 6, 
+    alignItems: 'center', 
+    marginTop: 20 
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  copyrightContainer: { 
+    marginTop: 30, 
+    marginBottom: 20, 
+    alignItems: 'center' 
+  },
+  copyrightText: { 
+    fontSize: 12, 
+    color: '#9ca3af', 
+    textAlign: 'center' 
+  }
+});
 
-      if (error) throw error;
-      setStaffList(data || []);
-    } catch (err: any) {
-      setStaffList([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export default function AddStaffScreen({ navigation, businessId, onSuccess }: AddStaffScreenProps) {
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchStaff();
-  }, [fetchStaff]);
-
-  const handleAddStaff = async () => {
-    if (!staffName.trim()) {
-      Alert.alert('Error', 'Please enter staff name.');
+  async function handleAddStaff() {
+    if (!fullName.trim()) {
+      Alert.alert('Error', 'Please enter a staff member name.');
       return;
     }
 
-    try {
-      const { error } = await supabase.from('staff').insert([
-        {
-          name: staffName.trim(),
-        },
-      ]);
+    setLoading(true);
+    const { error } = await supabase.from('profiles').insert([
+      {
+        full_name: fullName,
+        role,
+        business_id: businessId || null
+      }
+    ]);
 
-      if (error) throw error;
+    setLoading(false);
 
-      setStaffName('');
-      setStaffEmail('');
-      fetchStaff();
+    if (error) {
+      Alert.alert('Error adding staff', error.message);
+    } else {
       Alert.alert('Success', 'Staff member added successfully!');
-    } catch (err: any) {
-      Alert.alert('Error', 'Could not add staff: ' + err.message);
+      setFullName('');
+      setRole('');
+      if (onSuccess) onSuccess();
+      if (navigation && navigation.goBack) navigation.goBack();
     }
-  };
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>← Back to Dashboard</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack ? navigation.goBack() : null}>
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.header}>Add Staff Member</Text>
+
+      <View style={styles.form}>
+        <Text style={styles.label}>Full Name</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Enter staff name" 
+          value={fullName}
+          onChangeText={setFullName}
+        />
+
+        <Text style={styles.label}>Role / Title</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="e.g., Senior Groomer, Bather" 
+          value={role}
+          onChangeText={setRole}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleAddStaff} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Staff Member'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>👥 Salon Staff Management</Text>
       </View>
 
-      <View style={styles.formCard}>
-        <Text style={styles.subTitle}>Add New Staff Member</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Staff Name"
-          placeholderTextColor="#94a3b8"
-          value={staffName}
-          onChangeText={setStaffName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email Address (Optional)"
-          placeholderTextColor="#94a3b8"
-          value={staffEmail}
-          onChangeText={setStaffEmail}
-          autoCapitalize="none"
-        />
-        <TouchableOpacity style={styles.addBtn} onPress={handleAddStaff}>
-          <Text style={styles.addBtnText}>+ Add Staff Member</Text>
-        </TouchableOpacity>
+      <View style={styles.copyrightContainer}>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Groomer Safety System
+        </Text>
       </View>
 
-      <View style={styles.listContainer}>
-        <Text style={styles.subTitle}>Current Team</Text>
-        {loading ? (
-          <ActivityIndicator size="small" color="#0284c7" />
-        ) : (
-          <FlatList
-            data={staffList}
-            keyExtractor={(item) => item.id || item.name}
-            ListEmptyComponent={<Text style={styles.emptyText}>No staff members added yet.</Text>}
-            renderItem={({ item }) => (
-              <View style={styles.staffCard}>
-                <View>
-                  <Text style={styles.staffName}>{item.name}</Text>
-                  {item.email ? <Text style={styles.staffEmail}>{item.email}</Text> : null}
-                </View>
-                <View style={styles.roleBadge}>
-                  <Text style={styles.roleText}>{item.role || 'Groomer'}</Text>
-                </View>
-              </View>
-            )}
-          />
-        )}
-      </View>
-    </SafeAreaView>
+      <ReportButton />
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { padding: 16, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  backBtn: { alignSelf: 'flex-start', backgroundColor: '#e2e8f0', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, marginBottom: 8 },
-  backBtnText: { fontSize: 12, fontWeight: '700', color: '#475569' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
-  formCard: { backgroundColor: '#ffffff', margin: 16, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  subTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 10 },
-  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 10, color: '#0f172a' },
-  addBtn: { backgroundColor: '#16a34a', borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 4 },
-  addBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
-  listContainer: { flex: 1, paddingHorizontal: 16 },
-  emptyText: { color: '#94a3b8', fontSize: 13, fontStyle: 'italic', marginTop: 4 },
-  staffCard: { backgroundColor: '#ffffff', padding: 12, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
-  staffName: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
-  staffEmail: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  roleBadge: { backgroundColor: '#e0f2fe', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8 },
-  roleText: { fontSize: 11, color: '#0369a1', fontWeight: '800' },
-});

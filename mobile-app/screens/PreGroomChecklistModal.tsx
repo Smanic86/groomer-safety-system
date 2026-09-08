@@ -1,111 +1,173 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import ReportButton from '../components/ReportButton';
 
 type PreGroomChecklistModalProps = {
-  visible: boolean;
-  petName: string;
-  onClose: () => void;
-  onComplete: () => void;
+  navigation: any;
+  businessId?: string;
+  onSuccess?: () => void;
 };
 
-type CheckItem = {
-  id: string;
-  label: string;
-  subtext: string;
-};
-
-const CHECKLIST_ITEMS: CheckItem[] = [
-  { id: '1', label: 'Ears, Eyes & Skin Check', subtext: 'No visible signs of infection, severe matting, or open sores.' },
-  { id: '2', label: 'Restraint & Harness Checked', subtext: 'Table loop, belly strap, or safety harness fitted properly.' },
-  { id: '3', label: 'Bite Mitigation Ready', subtext: 'Muzzle, soft hood, or extra handler on standby if required.' },
-  { id: '4', label: 'Trigger Flags Reviewed', subtext: 'Reviewed previous sensitive areas (e.g. rear legs, dryer).' },
-];
-
-export default function PreGroomChecklistModal({ visible, petName, onClose, onComplete }: PreGroomChecklistModalProps) {
-  const [checkedIds, setCheckedIds] = useState<string[]>([]);
-
-  function toggleCheck(id: string) {
-    if (checkedIds.includes(id)) {
-      setCheckedIds(checkedIds.filter((item) => item !== id));
-    } else {
-      setCheckedIds([...checkedIds, id]);
-    }
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5',
+    position: 'relative'
+  },
+  contentContainer: {
+    paddingBottom: 80
+  },
+  backButton: { 
+    marginBottom: 10 
+  },
+  backText: { 
+    color: '#3182ce', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  header: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1a202c', 
+    marginBottom: 15 
+  },
+  card: { 
+    backgroundColor: '#fff', 
+    padding: 15, 
+    borderRadius: 8, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#edf2f7'
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: '#3182ce',
+    borderRadius: 4,
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  checked: {
+    backgroundColor: '#3182ce'
+  },
+  checkmark: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
+  checkText: {
+    fontSize: 15,
+    color: '#2d3748',
+    flex: 1
+  },
+  button: { 
+    backgroundColor: '#3182ce', 
+    padding: 14, 
+    borderRadius: 6, 
+    alignItems: 'center', 
+    marginTop: 20 
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  copyrightContainer: { 
+    marginTop: 30, 
+    marginBottom: 20, 
+    alignItems: 'center' 
+  },
+  copyrightText: { 
+    fontSize: 12, 
+    color: '#9ca3af', 
+    textAlign: 'center' 
   }
+});
 
-  function handleStartSession() {
-    if (checkedIds.length < CHECKLIST_ITEMS.length) {
-      Alert.alert(
-        'Checklist Incomplete',
-        'Please complete all safety checks before commencing the groom session.'
-      );
+export default function PreGroomChecklistModal({ navigation, onSuccess }: PreGroomChecklistModalProps) {
+  const [checkedItems, setCheckedItems] = useState({
+    healthCheck: false,
+    mattedCoat: false,
+    parasites: false,
+    behaviorAssessment: false
+  });
+
+  const toggleCheck = (key: keyof typeof checkedItems) => {
+    setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCompleteChecklist = () => {
+    const allChecked = Object.values(checkedItems).every(Boolean);
+    if (!allChecked) {
+      Alert.alert('Incomplete', 'Please verify all pre-groom safety items before proceeding.');
       return;
     }
 
-    Alert.alert('Assessment Passed', `Pre-groom safety assessment complete for ${petName}. Groom session started!`);
-    setCheckedIds([]);
-    onComplete();
-  }
+    Alert.alert('Success', 'Pre-groom checklist completed successfully.');
+    if (onSuccess) onSuccess();
+    if (navigation && navigation.goBack) navigation.goBack();
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.title}>🛡️ Pre-Groom Safety Check</Text>
-          <Text style={styles.subtitle}>Grooming: {petName}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack ? navigation.goBack() : null}>
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
 
-          <ScrollView style={styles.checklistContainer}>
-            {CHECKLIST_ITEMS.map((item) => {
-              const isChecked = checkedIds.includes(item.id);
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.checkCard, isChecked && styles.checkCardActive]}
-                  onPress={() => toggleCheck(item.id)}
-                >
-                  <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
-                    {isChecked && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <View style={styles.textContainer}>
-                    <Text style={styles.checkLabel}>{item.label}</Text>
-                    <Text style={styles.checkSubtext}>{item.subtext}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+      <Text style={styles.header}>Pre-Groom Safety Checklist</Text>
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.startBtn} onPress={handleStartSession}>
-              <Text style={styles.startBtnText}>Start Groom</Text>
-            </TouchableOpacity>
+      <View style={styles.card}>
+        <TouchableOpacity style={styles.checkItem} onPress={() => toggleCheck('healthCheck')}>
+          <View style={[styles.checkbox, checkedItems.healthCheck && styles.checked]}>
+            {checkedItems.healthCheck && <Text style={styles.checkmark}>✓</Text>}
           </View>
-        </View>
+          <Text style={styles.checkText}>General physical health & injury check</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.checkItem} onPress={() => toggleCheck('mattedCoat')}>
+          <View style={[styles.checkbox, checkedItems.mattedCoat && styles.checked]}>
+            {checkedItems.mattedCoat && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.checkText}>Coat condition & matting evaluation</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.checkItem} onPress={() => toggleCheck('parasites')}>
+          <View style={[styles.checkbox, checkedItems.parasites && styles.checked]}>
+            {checkedItems.parasites && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.checkText}>Flea, tick, and skin parasite inspection</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.checkItem} onPress={() => toggleCheck('behaviorAssessment')}>
+          <View style={[styles.checkbox, checkedItems.behaviorAssessment && styles.checked]}>
+            {checkedItems.behaviorAssessment && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.checkText}>Temperament & behavioral trigger review</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={handleCompleteChecklist}>
+          <Text style={styles.buttonText}>Confirm & Proceed</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+
+      <View style={styles.copyrightContainer}>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Groomer Safety System
+        </Text>
+      </View>
+
+      <ReportButton />
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '80%' },
-  title: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
-  subtitle: { fontSize: 14, color: '#64748b', marginBottom: 16, marginTop: 2 },
-  checklistContainer: { marginBottom: 16 },
-  checkCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 10 },
-  checkCardActive: { backgroundColor: '#f0fdf4', borderColor: '#86efac' },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#94a3b8', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  checkboxActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
-  checkmark: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  textContainer: { flex: 1 },
-  checkLabel: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
-  checkSubtext: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  buttonRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 12, backgroundColor: '#e2e8f0', borderRadius: 8, alignItems: 'center' },
-  cancelBtnText: { color: '#475569', fontWeight: '600', fontSize: 14 },
-  startBtn: { flex: 1, paddingVertical: 12, backgroundColor: '#0284c7', borderRadius: 8, alignItems: 'center' },
-  startBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-});

@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
-type AddPetScreenProps = {
+type AccidentReportScreenProps = {
   navigation: any;
   businessId?: string;
   onSuccess?: () => void;
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff' 
   },
   button: { 
-    backgroundColor: '#2b6cb0', 
+    backgroundColor: '#e53e3e', 
     padding: 12, 
     borderRadius: 6, 
     alignItems: 'center', 
@@ -81,28 +81,25 @@ const styles = StyleSheet.create({
   }
 });
 
-export default function AddPetScreen({ navigation, businessId, onSuccess }: AddPetScreenProps) {
-  const [name, setName] = useState('');
-  const [breed, setBreed] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
-  const [triggers, setTriggers] = useState('');
-  const [notes, setNotes] = useState('');
+export default function AccidentReportScreen({ navigation, businessId, onSuccess }: AccidentReportScreenProps) {
+  const [dogName, setDogName] = useState('');
+  const [incidentDetails, setIncidentDetails] = useState('');
+  const [actionsTaken, setActionsTaken] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleAddPet() {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a pet name.');
+  async function handleReportAccident() {
+    if (!dogName.trim() || !incidentDetails.trim()) {
+      Alert.alert('Error', 'Please fill in the dog name and incident details.');
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.from('dogs').insert([
+    const { error } = await supabase.from('incidents').insert([
       {
-        name,
-        breed,
-        photo_url: photoUrl,
-        triggers,
-        notes,
+        dog_name: dogName,
+        details: incidentDetails,
+        actions_taken: actionsTaken,
+        type: 'accident',
         business_id: businessId || null
       }
     ]);
@@ -110,14 +107,12 @@ export default function AddPetScreen({ navigation, businessId, onSuccess }: AddP
     setLoading(false);
 
     if (error) {
-      Alert.alert('Error saving pet', error.message);
+      Alert.alert('Error submitting report', error.message);
     } else {
-      Alert.alert('Success', 'Pet added successfully!');
-      setName('');
-      setBreed('');
-      setPhotoUrl('');
-      setTriggers('');
-      setNotes('');
+      Alert.alert('Success', 'Accident report logged successfully.');
+      setDogName('');
+      setIncidentDetails('');
+      setActionsTaken('');
       if (onSuccess) onSuccess();
       if (navigation && navigation.goBack) navigation.goBack();
     }
@@ -129,52 +124,37 @@ export default function AddPetScreen({ navigation, businessId, onSuccess }: AddP
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.header}>Add New Dog Profile</Text>
+      <Text style={styles.header}>File Accident Report</Text>
 
       <View style={styles.form}>
-        <Text style={styles.label}>Dog's Name</Text>
+        <Text style={styles.label}>Dog Name / ID</Text>
         <TextInput 
           style={styles.input} 
           placeholder="Enter dog name" 
-          value={name}
-          onChangeText={setName}
+          value={dogName}
+          onChangeText={setDogName}
         />
 
-        <Text style={styles.label}>Breed</Text>
+        <Text style={styles.label}>Incident Details</Text>
         <TextInput 
-          style={styles.input} 
-          placeholder="Enter breed" 
-          value={breed}
-          onChangeText={setBreed}
-        />
-
-        <Text style={styles.label}>Photo URL</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Paste image link here" 
-          value={photoUrl}
-          onChangeText={setPhotoUrl}
-        />
-
-        <Text style={styles.label}>Triggers & Sensitivities</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g., Sensitive paws, dryer noise" 
-          value={triggers}
-          onChangeText={setTriggers}
-        />
-
-        <Text style={styles.label}>General Notes</Text>
-        <TextInput 
-          style={[styles.input, { height: 60, textAlignVertical: 'top' }]} 
-          placeholder="Additional care info..." 
+          style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
+          placeholder="Describe what happened..." 
           multiline
-          value={notes}
-          onChangeText={setNotes}
+          value={incidentDetails}
+          onChangeText={setIncidentDetails}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleAddPet} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Pet Profile'}</Text>
+        <Text style={styles.label}>Actions Taken / First Aid</Text>
+        <TextInput 
+          style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
+          placeholder="First aid administered, vet contacted..." 
+          multiline
+          value={actionsTaken}
+          onChangeText={setActionsTaken}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleReportAccident} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Submitting...' : 'Submit Accident Report'}</Text>
         </TouchableOpacity>
       </View>
 

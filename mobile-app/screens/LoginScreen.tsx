@@ -1,216 +1,152 @@
-/**
- * Project: Dog Grooming Management & Safety App
- * File: LoginScreen.tsx
- * Description: Authentication and beta registration screen with access code verification.
- * 
- * Copyright (c) 2026 Smanic86. All rights reserved.
- * Proprietary and Confidential.
- */
-
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Alert 
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import ReportButton from '../components/ReportButton';
 
-export default function LoginScreen({ navigation }: { navigation: any }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Constants for Beta Tester Access
-  const REQUIRED_BETA_CODE = 'BETAGROOMER2026';
-  const ASSIGNED_TESTER_BADGE = 'BetaSalon';
-
-  const handleAuthAction = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
-      return;
-    }
-
-    setLoading(true);
-
-    if (isRegistering) {
-      // Validate Beta Tester Invite Code during registration
-      if (inviteCode.trim() !== REQUIRED_BETA_CODE) {
-        setLoading(false);
-        Alert.alert('Access Denied', 'Invalid or missing beta invitation code.');
-        return;
-      }
-
-      try {
-        // Register user with Supabase Auth and assign the BetaSalon badge
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password.trim(),
-          options: {
-            data: {
-              badge: ASSIGNED_TESTER_BADGE,
-            },
-          },
-        });
-
-        if (error) throw error;
-
-        Alert.alert(
-          'Registration Successful', 
-          `Welcome aboard! Your salon has been granted the ${ASSIGNED_TESTER_BADGE} badge.`
-        );
-      } catch (err: any) {
-        Alert.alert('Registration Failed', err.message || 'An unexpected error occurred.');
-      }
-    } else {
-      // Standard Sign In Logic
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password.trim(),
-        });
-
-        if (error) throw error;
-      } catch (err: any) {
-        Alert.alert('Sign In Failed', err.message || 'Check your credentials.');
-      }
-    }
-
-    setLoading(false);
-  };
-
-  return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-      style={styles.container}
-    >
-      <View style={styles.formCard}>
-        <Text style={styles.title}>
-          {isRegistering ? 'Beta Salon Registration' : 'Salon Login'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {isRegistering ? 'Enter your exclusive beta code to join.' : 'Access your salon dashboard.'}
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email Address"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#888"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        {isRegistering && (
-          <TextInput
-            style={styles.input}
-            placeholder="Beta Invite Code (e.g., BETAGROOMER2026)"
-            placeholderTextColor="#888"
-            value={inviteCode}
-            onChangeText={setInviteCode}
-            autoCapitalize="characters"
-          />
-        )}
-
-        <TouchableOpacity 
-          style={styles.primaryButton} 
-          onPress={handleAuthAction}
-          disabled={loading}
-        >
-          <Text style={styles.primaryButtonText}>
-            {loading ? 'Processing...' : isRegistering ? 'Register Account' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          onPress={() => setIsRegistering(!isRegistering)}
-          style={styles.switchButton}
-        >
-          <Text style={styles.switchText}>
-            {isRegistering ? 'Already have an account? Sign In' : 'Need beta access? Register here'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
+type LoginScreenProps = {
+  navigation?: any;
+  onSuccess?: () => void;
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f7fa',
-    padding: 20,
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5',
+    position: 'relative'
   },
-  formCard: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  contentContainer: {
+    paddingBottom: 80
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a202c',
-    marginBottom: 6,
+  header: { 
+    fontSize: 26, 
+    fontWeight: 'bold', 
+    color: '#1a202c', 
+    marginBottom: 8,
+    textAlign: 'center',
+    marginTop: 40
   },
   subtitle: {
     fontSize: 14,
     color: '#718096',
-    marginBottom: 20,
+    marginBottom: 24,
+    textAlign: 'center'
   },
-  input: {
-    backgroundColor: '#edf2f7',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    color: '#2d3748',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  form: { 
+    backgroundColor: '#fff', 
+    padding: 20, 
+    borderRadius: 8, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2 
   },
-  primaryButton: {
-    backgroundColor: '#3182ce',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 6,
+  label: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#4a5568', 
+    marginTop: 10, 
+    marginBottom: 5 
   },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#cbd5e0', 
+    borderRadius: 6, 
+    padding: 10, 
+    fontSize: 14, 
+    backgroundColor: '#fff',
+    color: '#1a202c' 
   },
-  switchButton: {
-    marginTop: 16,
-    alignItems: 'center',
+  button: { 
+    backgroundColor: '#3182ce', 
+    padding: 14, 
+    borderRadius: 6, 
+    alignItems: 'center', 
+    marginTop: 20 
   },
-  switchText: {
-    color: '#3182ce',
-    fontSize: 14,
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
   },
+  copyrightContainer: { 
+    marginTop: 30, 
+    marginBottom: 20, 
+    alignItems: 'center' 
+  },
+  copyrightText: { 
+    fontSize: 12, 
+    color: '#9ca3af', 
+    textAlign: 'center' 
+  }
 });
+
+export default function LoginScreen({ onSuccess }: LoginScreenProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin() {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Login Failed', error.message);
+    } else {
+      if (onSuccess) {
+        onSuccess();
+      } else if (data.session) {
+        // Forces a clean web reload to seamlessly transition into the authenticated dashboard view
+        window.location.reload();
+      }
+    }
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <Text style={styles.header}>Welcome Back</Text>
+      <Text style={styles.subtitle}>Sign in to access the Groomer Safety System</Text>
+
+      <View style={styles.form}>
+        <Text style={styles.label}>Email Address</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Enter your email" 
+          placeholderTextColor="#a0aec0"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
+
+        <Text style={styles.label}>Password</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Enter your password" 
+          placeholderTextColor="#a0aec0"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.copyrightContainer}>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Groomer Safety System
+        </Text>
+      </View>
+
+      <ReportButton />
+    </ScrollView>
+  );
+}

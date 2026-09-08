@@ -1,206 +1,168 @@
-/**
- * Copyright (c) 2026. All rights reserved.
- * 
- * Proprietary and confidential. Unauthorized copying or redistribution
- * of this file, via any medium, is strictly prohibited.
- */
-
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import ReportButton from '../components/ReportButton';
 
-export default function RiskAssessmentScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const petId = route?.params?.petId;
+type RiskAssessmentScreenProps = {
+  navigation: any;
+  businessId?: string;
+  onSuccess?: () => void;
+};
 
-  const [temperament, setTemperament] = useState<string>('Calm');
-  const [skinCondition, setSkinCondition] = useState<string>('Clear');
-  const [earsEyes, setEarsEyes] = useState<string>('Normal');
-  const [mattingLevel, setMattingLevel] = useState<string>('None');
-  const [notes, setNotes] = useState<string>('');
-  const [saving, setSaving] = useState<boolean>(false);
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5',
+    position: 'relative'
+  },
+  contentContainer: {
+    paddingBottom: 80
+  },
+  backButton: { 
+    marginBottom: 10 
+  },
+  backText: { 
+    color: '#3182ce', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  header: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#1a202c', 
+    marginBottom: 15 
+  },
+  form: { 
+    backgroundColor: '#fff', 
+    padding: 15, 
+    borderRadius: 8, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
+  label: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#4a5568', 
+    marginTop: 10, 
+    marginBottom: 5 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#cbd5e0', 
+    borderRadius: 6, 
+    padding: 10, 
+    fontSize: 14, 
+    backgroundColor: '#fff' 
+  },
+  button: { 
+    backgroundColor: '#3182ce', 
+    padding: 12, 
+    borderRadius: 6, 
+    alignItems: 'center', 
+    marginTop: 20 
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
+  copyrightContainer: { 
+    marginTop: 30, 
+    marginBottom: 20, 
+    alignItems: 'center' 
+  },
+  copyrightText: { 
+    fontSize: 12, 
+    color: '#9ca3af', 
+    textAlign: 'center' 
+  }
+});
 
-  const handleGoBack = () => {
-    if (navigation && typeof navigation.goBack === 'function' && navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('PetDetailScreen', { petId });
-    }
-  };
+export default function RiskAssessmentScreen({ navigation, businessId, onSuccess }: RiskAssessmentScreenProps) {
+  const [dogName, setDogName] = useState('');
+  const [riskLevel, setRiskLevel] = useState('');
+  const [precautions, setPrecautions] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = async () => {
-    if (!petId) {
-      Alert.alert('Error', 'No pet selected for risk assessment.');
+  async function handleSaveAssessment() {
+    if (!dogName.trim()) {
+      Alert.alert('Error', 'Please enter the dog name.');
       return;
     }
 
-    setSaving(true);
-    try {
-      const formattedNotes = `Ears/Eyes: ${earsEyes} | Notes: ${notes}`.trim();
+    setLoading(true);
+    const { error } = await supabase.from('risk_assessments').insert([
+      {
+        dog_name: dogName,
+        risk_level: riskLevel,
+        precautions: precautions,
+        business_id: businessId || null
+      }
+    ]);
 
-      const { error } = await supabase.from('risk_assessments').upsert({
-        pet_id: petId,
-        temperament_rating: temperament,
-        skin_condition: skinCondition,
-        matting_level: mattingLevel,
-        notes: formattedNotes,
-        updated_at: new Date().toISOString(),
-      });
+    setLoading(false);
 
-      if (error) throw error;
-
-      Alert.alert('Success', 'Pre-groom check saved successfully!', [
-        { text: 'OK', onPress: () => handleGoBack() },
-      ]);
-    } catch (err: any) {
-      Alert.alert('Save Error', err.message);
-    } finally {
-      setSaving(false);
+    if (error) {
+      Alert.alert('Error saving assessment', error.message);
+    } else {
+      Alert.alert('Success', 'Risk assessment saved successfully.');
+      setDogName('');
+      setRiskLevel('');
+      setPrecautions('');
+      if (onSuccess) onSuccess();
+      if (navigation && navigation.goBack) navigation.goBack();
     }
-  };
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
-            <Text style={styles.backBtnText}>← Back to Details</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pre-Groom Check</Text>
-        </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack ? navigation.goBack() : null}>
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Temperament / Behavior</Text>
-        <View style={styles.chipGroup}>
-          {['Calm', 'Nervous', 'Aggressive', 'Excited'].map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={[styles.chip, temperament === option && styles.chipActive]}
-              onPress={() => setTemperament(option)}
-            >
-              <Text style={[styles.chipText, temperament === option && styles.chipTextActive]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <Text style={styles.header}>Dog Risk Assessment</Text>
 
-        <Text style={styles.sectionTitle}>Skin & Coat Condition</Text>
-        <View style={styles.chipGroup}>
-          {['Clear', 'Dry/Flaky', 'Fleas/Ticks', 'Irritated'].map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={[styles.chip, skinCondition === option && styles.chipActive]}
-              onPress={() => setSkinCondition(option)}
-            >
-              <Text style={[styles.chipText, skinCondition === option && styles.chipTextActive]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>Ears & Eyes</Text>
-        <View style={styles.chipGroup}>
-          {['Normal', 'Dirty/Infected', 'Discharge', 'Sensitive'].map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={[styles.chip, earsEyes === option && styles.chipActive]}
-              onPress={() => setEarsEyes(option)}
-            >
-              <Text style={[styles.chipText, earsEyes === option && styles.chipTextActive]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>Matting Level</Text>
-        <View style={styles.chipGroup}>
-          {['None', 'Minor', 'Moderate', 'Severe'].map((option) => (
-            <TouchableOpacity
-              key={option}
-              style={[styles.chip, mattingLevel === option && styles.chipActive]}
-              onPress={() => setMattingLevel(option)}
-            >
-              <Text style={[styles.chipText, mattingLevel === option && styles.chipTextActive]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>Additional Safety Notes</Text>
-        <TextInput
-          style={styles.textInput}
-          multiline
-          numberOfLines={4}
-          placeholder="Note any pre-existing injuries, warts, or sensitive spots..."
-          placeholderTextColor="#94a3b8"
-          value={notes}
-          onChangeText={setNotes}
+      <View style={styles.form}>
+        <Text style={styles.label}>Dog Name / ID</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Enter dog name" 
+          value={dogName}
+          onChangeText={setDogName}
         />
 
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.saveBtnText}>Complete & Save Check</Text>
-          )}
+        <Text style={styles.label}>Risk Level (Low / Moderate / High)</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="e.g., Moderate (biter/nips at paws)" 
+          value={riskLevel}
+          onChangeText={setRiskLevel}
+        />
+
+        <Text style={styles.label}>Required Safety Precautions</Text>
+        <TextInput 
+          style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
+          placeholder="e.g., Muzzle required, two-person hold..." 
+          multiline
+          value={precautions}
+          onChangeText={setPrecautions}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleSaveAssessment} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Assessment'}</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+
+      <View style={styles.copyrightContainer}>
+        <Text style={styles.copyrightText}>
+          © {new Date().getFullYear()} Groomer Safety System
+        </Text>
+      </View>
+
+      <ReportButton />
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#ffffff' },
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  content: { padding: 20, paddingTop: 10, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
-  backBtn: { paddingVertical: 4, paddingHorizontal: 4 },
-  backBtnText: { color: '#2563eb', fontWeight: '700', fontSize: 14 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b', marginTop: 16, marginBottom: 8 },
-  chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#f1f5f9',
-  },
-  chipActive: { backgroundColor: '#2563eb' },
-  chipText: { fontSize: 13, color: '#334155', fontWeight: '600' },
-  chipTextActive: { color: '#ffffff', fontWeight: '700' },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 13,
-    color: '#0f172a',
-    backgroundColor: '#f8fafc',
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  saveBtn: {
-    backgroundColor: '#16a34a',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  saveBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
-});
