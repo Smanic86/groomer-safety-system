@@ -12,16 +12,40 @@ import ReportButton from '../components/ReportButton';
 export default function PetDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { dog } = route.params || {};
+  const { dogId, dog: passedDog } = route.params || {};
 
+  const [dog, setDog] = useState<any>(passedDog || null);
+  const [loadingDog, setLoadingDog] = useState(!passedDog && !!dogId);
   const [dogIncidents, setDogIncidents] = useState<any[]>([]);
   const [loadingIncidents, setLoadingIncidents] = useState(true);
+
+  useEffect(() => {
+    if (!passedDog && dogId) {
+      fetchDogDetails(dogId);
+    }
+  }, [dogId, passedDog]);
 
   useEffect(() => {
     if (dog?.name) {
       fetchDogIncidents(dog.name);
     }
   }, [dog]);
+
+  async function fetchDogDetails(id: string) {
+    setLoadingDog(true);
+    const { data, error } = await supabase
+      .from('dog_profiles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.log('Error fetching dog details:', error.message);
+    } else if (data) {
+      setDog(data);
+    }
+    setLoadingDog(false);
+  }
 
   async function fetchDogIncidents(dogName: string) {
     setLoadingIncidents(true);
@@ -37,6 +61,14 @@ export default function PetDetailScreen() {
       setDogIncidents(data);
     }
     setLoadingIncidents(false);
+  }
+
+  if (loadingDog) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.subText}>Loading dog profile...</Text>
+      </View>
+    );
   }
 
   if (!dog) {
