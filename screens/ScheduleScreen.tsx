@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
 /**
- * Groomer Safety System - Schedule Screen with Cancellation Tracking
+ * Groomer Safety System - Schedule Screen with Rota-to-Profile Navigation
  * © 2026 Dog Days Grooming & Development. All rights reserved.
  */
 
@@ -219,7 +219,6 @@ export default function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Calendar Grid Header */}
       <View style={styles.calendarHeader}>
         <TouchableOpacity onPress={() => {
           if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
@@ -261,12 +260,25 @@ export default function ScheduleScreen() {
               <Text style={styles.cellDayNumber}>{item.day}</Text>
               {dayShifts.map(s => {
                 const theme = GROOMER_COLORS[s.staff_name] || GROOMER_COLORS['default'];
+                const matchedDog = dogList.find(d => d.name.toLowerCase() === s.dog_name.toLowerCase());
+
                 return (
-                  <View key={s.id} style={[styles.cellShiftBadge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                  <TouchableOpacity 
+                    key={s.id} 
+                    style={[styles.cellShiftBadge, { backgroundColor: theme.bg, borderColor: theme.border }]}
+                    onPress={() => {
+                      if (matchedDog) {
+                        navigation.navigate('PetDetail', { dogId: matchedDog.id });
+                      } else {
+                        navigation.navigate('PetDetail', { dog: { name: s.dog_name } });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Text style={[styles.cellShiftText, { color: theme.text }]} numberOfLines={1}>
                       {s.dog_name}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </TouchableOpacity>
@@ -281,12 +293,25 @@ export default function ScheduleScreen() {
         ) : (
           shifts.map((item) => {
             const isCanceled = item.status === 'Canceled';
+            const matchedDog = dogList.find(d => d.name.toLowerCase() === item.dog_name.toLowerCase());
+
             return (
               <View key={item.id} style={[styles.rowItem, isCanceled && styles.canceledRow]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowText, isCanceled && styles.canceledText]}>
-                    🐶 {item.dog_name} — Staff: {item.staff_name} {isCanceled ? '(Canceled)' : ''}
-                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      if (matchedDog) {
+                        navigation.navigate('PetDetail', { dogId: matchedDog.id });
+                      } else {
+                        navigation.navigate('PetDetail', { dog: { name: item.dog_name } });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.rowText, isCanceled && styles.canceledText]}>
+                      🐶 {item.dog_name} — Staff: {item.staff_name} {isCanceled ? '(Canceled)' : ''}
+                    </Text>
+                  </TouchableOpacity>
                   <Text style={styles.subText}>{item.date} | {item.time}</Text>
                 </View>
                 {!isCanceled ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
@@ -92,11 +92,23 @@ export default function PetDetailScreen() {
         <Text style={styles.dogName}>🐶 {dog.name}</Text>
         <Text style={styles.dogMeta}>Breed: {dog.breed || 'Unknown'} | Age: {dog.age || 'N/A'} yrs</Text>
         <Text style={styles.dogMeta}>Owner: {dog.owner_name || 'N/A'} ({dog.owner_phone || 'No phone'})</Text>
-        
-        {dog.notes ? (
+        <Text style={styles.dogMeta}>Postcode: {dog.postcode || 'N/A'}</Text>
+
+        <View style={styles.notesSection}>
+          <Text style={styles.notesHeader}>📋 Grooming & Care Notes</Text>
           <View style={styles.notesBox}>
-            <Text style={styles.notesTitle}>General Care Notes:</Text>
-            <Text style={styles.notesContent}>{dog.notes}</Text>
+            <Text style={styles.notesContent}>
+              {dog.notes || dog.grooming_notes || 'No specific care notes added for this dog yet.'}
+            </Text>
+          </View>
+        </View>
+
+        {dog.temperament ? (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesHeader}>⚡ Temperament & Handling</Text>
+            <View style={styles.notesBox}>
+              <Text style={styles.notesContent}>{dog.temperament}</Text>
+            </View>
           </View>
         ) : null}
       </View>
@@ -105,7 +117,7 @@ export default function PetDetailScreen() {
         <Text style={styles.sectionHeader}>⚠️ Safety & Behavior Incident History</Text>
         <TouchableOpacity 
           style={styles.logButton} 
-          onPress={() => navigation.navigate('LogIncident')}
+          onPress={() => navigation.navigate('LogIncident', { dogName: dog.name })}
           activeOpacity={0.7}
         >
           <Text style={styles.logButtonText}>+ Log New</Text>
@@ -145,9 +157,10 @@ const styles = StyleSheet.create({
   profileCard: { backgroundColor: '#fff', padding: 18, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 20, gap: 6 },
   dogName: { fontSize: 22, fontWeight: 'bold', color: '#1a202c' },
   dogMeta: { fontSize: 14, color: '#4a5568' },
-  notesBox: { backgroundColor: '#f7fafc', padding: 10, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: '#edf2f7' },
-  notesTitle: { fontSize: 13, fontWeight: 'bold', color: '#2d3748', marginBottom: 2 },
-  notesContent: { fontSize: 13, color: '#4a5568' },
+  notesSection: { marginTop: 10 },
+  notesHeader: { fontSize: 14, fontWeight: 'bold', color: '#2d3748', marginBottom: 4 },
+  notesBox: { backgroundColor: '#f7fafc', padding: 12, borderRadius: 6, borderWidth: 1, borderColor: '#edf2f7' },
+  notesContent: { fontSize: 13, color: '#4a5568', lineHeight: 18 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#2d3748' },
   logButton: { backgroundColor: '#3182ce', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
