@@ -1,190 +1,144 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
-type AddPetScreenProps = {
-  navigation: any;
-  businessId?: string;
-  onSuccess?: () => void;
-};
+/**
+ * Groomer Safety System - Add Dog & Owner Profile Screen
+ * © 2026 Dog Days Grooming & Development. All rights reserved.
+ */
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#f5f5f5',
-    position: 'relative'
-  },
-  contentContainer: {
-    paddingBottom: 80
-  },
-  backButton: { 
-    marginBottom: 10 
-  },
-  backText: { 
-    color: '#3182ce', 
-    fontWeight: 'bold', 
-    fontSize: 16 
-  },
-  header: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    color: '#1a202c', 
-    marginBottom: 15 
-  },
-  form: { 
-    backgroundColor: '#fff', 
-    padding: 15, 
-    borderRadius: 8, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.05, 
-    shadowRadius: 4, 
-    elevation: 2 
-  },
-  label: { 
-    fontSize: 13, 
-    fontWeight: '600', 
-    color: '#4a5568', 
-    marginTop: 10, 
-    marginBottom: 5 
-  },
-  input: { 
-    borderWidth: 1, 
-    borderColor: '#cbd5e0', 
-    borderRadius: 6, 
-    padding: 10, 
-    fontSize: 14, 
-    backgroundColor: '#fff' 
-  },
-  button: { 
-    backgroundColor: '#2b6cb0', 
-    padding: 12, 
-    borderRadius: 6, 
-    alignItems: 'center', 
-    marginTop: 20 
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
-  },
-  copyrightContainer: { 
-    marginTop: 30, 
-    marginBottom: 20, 
-    alignItems: 'center' 
-  },
-  copyrightText: { 
-    fontSize: 12, 
-    color: '#9ca3af', 
-    textAlign: 'center' 
-  }
-});
-
-export default function AddPetScreen({ navigation, businessId, onSuccess }: AddPetScreenProps) {
+export default function AddPetScreen() {
+  const navigation = useNavigation<any>();
   const [name, setName] = useState('');
   const [breed, setBreed] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
-  const [triggers, setTriggers] = useState('');
+  const [age, setAge] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleAddPet() {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a pet name.');
+  async function handleSaveDog() {
+    if (!name.trim() || !ownerName.trim()) {
+      Alert.alert('Missing Fields', 'Please provide at least the dog name and owner name.');
       return;
     }
 
-    setLoading(true);
-    const { error } = await supabase.from('dogs').insert([
+    setIsSubmitting(true);
+    const { error } = await supabase.from('dog_profiles').insert([
       {
-        name,
-        breed,
-        photo_url: photoUrl,
-        triggers,
-        notes,
-        business_id: businessId || null
+        name: name.trim(),
+        breed: breed.trim() || 'Unknown',
+        age: age.trim() ? parseInt(age.trim(), 10) : null,
+        owner_name: ownerName.trim(),
+        owner_phone: ownerPhone.trim() || 'No phone',
+        notes: notes.trim()
       }
     ]);
 
-    setLoading(false);
+    setIsSubmitting(false);
 
     if (error) {
-      Alert.alert('Error saving pet', error.message);
+      Alert.alert('Error', 'Failed to save dog profile: ' + error.message);
     } else {
-      Alert.alert('Success', 'Pet added successfully!');
-      setName('');
-      setBreed('');
-      setPhotoUrl('');
-      setTriggers('');
-      setNotes('');
-      if (onSuccess) onSuccess();
-      if (navigation && navigation.goBack) navigation.goBack();
+      Alert.alert('Success', 'Dog profile registered successfully.', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack ? navigation.goBack() : null}>
-        <Text style={styles.backText}>← Back</Text>
+    <ScrollView style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.header}>Add New Dog Profile</Text>
+      <Text style={styles.title}>Register New Dog & Client</Text>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Dog's Name</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Enter dog name" 
+      <View style={styles.formCard}>
+        <Text style={styles.label}>Dog's Name:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., Buster"
+          placeholderTextColor="#a0aec0"
           value={name}
           onChangeText={setName}
         />
 
-        <Text style={styles.label}>Breed</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Enter breed" 
+        <Text style={styles.label}>Breed:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., Shih Tzu / Poodle Cross"
+          placeholderTextColor="#a0aec0"
           value={breed}
           onChangeText={setBreed}
         />
 
-        <Text style={styles.label}>Photo URL</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Paste image link here" 
-          value={photoUrl}
-          onChangeText={setPhotoUrl}
+        <Text style={styles.label}>Age (Years):</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 3"
+          placeholderTextColor="#a0aec0"
+          keyboardType="numeric"
+          value={age}
+          onChangeText={setAge}
         />
 
-        <Text style={styles.label}>Triggers & Sensitivities</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g., Sensitive paws, dryer noise" 
-          value={triggers}
-          onChangeText={setTriggers}
+        <Text style={styles.label}>Owner's Full Name:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., Jane Doe"
+          placeholderTextColor="#a0aec0"
+          value={ownerName}
+          onChangeText={setOwnerName}
         />
 
-        <Text style={styles.label}>General Notes</Text>
-        <TextInput 
-          style={[styles.input, { height: 60, textAlignVertical: 'top' }]} 
-          placeholder="Additional care info..." 
+        <Text style={styles.label}>Owner's Phone Number:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 07123 456789"
+          placeholderTextColor="#a0aec0"
+          keyboardType="phone-pad"
+          value={ownerPhone}
+          onChangeText={setOwnerPhone}
+        />
+
+        <Text style={styles.label}>General Care & Handling Notes:</Text>
+        <TextInput
+          style={styles.textArea}
+          placeholder="Any specific behavioral quirks, medical notes, or preferences..."
+          placeholderTextColor="#a0aec0"
           multiline
+          numberOfLines={4}
           value={notes}
           onChangeText={setNotes}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleAddPet} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save Pet Profile'}</Text>
+        <TouchableOpacity 
+          style={[styles.submitButton, isSubmitting && { opacity: 0.6 }]} 
+          onPress={handleSaveDog}
+          disabled={isSubmitting}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.submitButtonText}>{isSubmitting ? 'Saving Profile...' : 'Save Dog Profile'}</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.copyrightContainer}>
-        <Text style={styles.copyrightText}>
-          © {new Date().getFullYear()} Groomer Safety System
-        </Text>
       </View>
 
       <ReportButton />
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
+  backButton: { marginBottom: 15 },
+  backButtonText: { color: '#3182ce', fontSize: 14, fontWeight: '600' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1a202c', marginBottom: 15 },
+  formCard: { backgroundColor: '#fff', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', gap: 12, marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: '#4a5568', marginTop: 5 },
+  input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
+  textArea: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c', textAlignVertical: 'top', height: 100 },
+  submitButton: { backgroundColor: '#3182ce', padding: 14, borderRadius: 6, alignItems: 'center', marginTop: 10 },
+  submitButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
+});

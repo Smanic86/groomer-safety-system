@@ -4,6 +4,11 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import ReportButton from '../components/ReportButton';
 
+/**
+ * Groomer Safety System - Schedule Screen with Cancellation Tracking
+ * © 2026 Dog Days Grooming & Development. All rights reserved.
+ */
+
 const GROOMER_COLORS: { [key: string]: { bg: string; border: string; text: string } } = {
   'Sarah Jenkins': { bg: '#ebf8ff', border: '#bee3f8', text: '#2b6cb0' },
   'David Smith': { bg: '#f0fff4', border: '#c6f6d5', text: '#22543d' },
@@ -11,15 +16,8 @@ const GROOMER_COLORS: { [key: string]: { bg: string; border: string; text: strin
 };
 
 const TIME_SLOTS = [
-  '9:00 AM',
-  '10:00 AM',
-  '11:00 AM',
-  '12:00 PM',
-  '1:00 PM',
-  '2:00 PM',
-  '3:00 PM',
-  '4:00 PM',
-  '5:00 PM'
+  '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', 
+  '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'
 ];
 
 export default function ScheduleScreen() {
@@ -52,7 +50,7 @@ export default function ScheduleScreen() {
 
   async function fetchStaffMembers() {
     const { data, error } = await supabase.from('staff_members').select('*');
-    if (error) console.log('Error fetching staff list:', error.message);
+    if (error) console.log('Error fetching staff:', error.message);
     else if (data && data.length > 0) {
       setStaffList(data);
       setSelectedStaff(data[0].name);
@@ -62,11 +60,9 @@ export default function ScheduleScreen() {
 
   async function fetchShifts(currentStaff: string, role: string) {
     let query = supabase.from('staff_schedule').select('*');
-    
     if (role !== 'receptionist') {
       query = query.eq('staff_name', currentStaff);
     }
-
     const { data, error } = await query;
     if (error) console.log('Error fetching schedule:', error.message);
     else if (data) setShifts(data);
@@ -92,12 +88,13 @@ export default function ScheduleScreen() {
         staff_name: selectedStaff.trim(), 
         dog_name: selectedDog.trim() || 'No Dog Assigned',
         date: shiftDate.trim(), 
-        time: shiftTime.trim()
+        time: shiftTime.trim(),
+        status: 'Booked'
       }
     ]).select();
 
     if (!error && data) {
-      setShifts(prevShifts => [...prevShifts, data[0]]);
+      setShifts(prev => [...prev, data[0]]);
       setShiftDate('');
       setSelectedDog('');
       setDogSearchQuery('');
@@ -107,9 +104,17 @@ export default function ScheduleScreen() {
     setIsSubmitting(false);
   }
 
-  async function handleRemoveShift(id: any) {
-    const { error } = await supabase.from('staff_schedule').delete().eq('id', id);
-    if (!error) setShifts(shifts.filter(item => item.id !== id));
+  async function handleCancelShift(id: any) {
+    const { error } = await supabase
+      .from('staff_schedule')
+      .update({ status: 'Canceled' })
+      .eq('id', id);
+
+    if (!error) {
+      setShifts(shifts.map(item => item.id === id ? { ...item, status: 'Canceled' } : item));
+    } else {
+      console.log('Error updating cancellation status:', error.message);
+    }
   }
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -141,17 +146,14 @@ export default function ScheduleScreen() {
                 setSelectedStaff(staff.name);
                 setLoggedInStaffRole(staff.role || 'groomer');
               }}
+              activeOpacity={0.7}
             >
               <Text style={[styles.chipText, selectedStaff === staff.name && styles.selectedChipText]}>
-                {staff.name} {staff.role === 'receptionist' ? '⭐ (Receptionist)' : '✂️ (Groomer)'}
+                {staff.name} {staff.role === 'receptionist' ? '⭐' : '✂️'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-
-        {loggedInStaffRole === 'receptionist' && (
-          <Text style={styles.receptionistBanner}>Receptionist Mode: Managing all staff schedules & availability.</Text>
-        )}
 
         <Text style={styles.label}>Search & Assign Dog Profile:</Text>
         <TextInput
@@ -175,6 +177,7 @@ export default function ScheduleScreen() {
                     setSelectedDog(dog.name);
                     setDogSearchQuery(dog.name);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.searchResultText}>🐶 {dog.name} ({dog.breed || 'Mixed'})</Text>
                 </TouchableOpacity>
@@ -182,10 +185,6 @@ export default function ScheduleScreen() {
             )}
           </View>
         )}
-
-        {selectedDog ? (
-          <Text style={styles.selectedDogIndicator}>Selected Dog: <Text style={{fontWeight: 'bold'}}>{selectedDog}</Text></Text>
-        ) : null}
 
         <Text style={styles.label}>Selected Date (Click calendar day below):</Text>
         <TextInput
@@ -203,10 +202,9 @@ export default function ScheduleScreen() {
               key={slot}
               style={[styles.chip, shiftTime === slot && styles.selectedChip]}
               onPress={() => setShiftTime(slot)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.chipText, shiftTime === slot && styles.selectedChipText]}>
-                {slot}
-              </Text>
+              <Text style={[styles.chipText, shiftTime === slot && styles.selectedChipText]}>{slot}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -215,6 +213,7 @@ export default function ScheduleScreen() {
           style={[styles.addButton, isSubmitting && { opacity: 0.6 }]} 
           onPress={handleAddShift}
           disabled={isSubmitting}
+          activeOpacity={0.7}
         >
           <Text style={styles.addButtonText}>{isSubmitting ? 'Booking...' : 'Book Appointment Slot'}</Text>
         </TouchableOpacity>
@@ -238,8 +237,8 @@ export default function ScheduleScreen() {
       </View>
 
       <View style={styles.weekDaysRow}>
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, index) => (
-          <Text key={index} style={styles.weekDayText}>{d}</Text>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+          <Text key={i} style={styles.weekDayText}>{d}</Text>
         ))}
       </View>
 
@@ -248,9 +247,8 @@ export default function ScheduleScreen() {
           if (!item) return <View key={`empty-${index}`} style={styles.calendarCellEmpty} />;
           
           const dayShifts = shifts.filter(s => {
-            if (!s.date) return false;
-            const targetDateStr = `${monthNames[currentMonth]} ${item.day}, ${currentYear}`;
-            return s.date.trim() === targetDateStr;
+            if (!s.date || s.status === 'Canceled') return false;
+            return s.date.trim() === `${monthNames[currentMonth]} ${item.day}, ${currentYear}`;
           });
 
           return (
@@ -258,6 +256,7 @@ export default function ScheduleScreen() {
               key={`day-${item.day}`} 
               style={styles.calendarCell}
               onPress={() => setShiftDate(item.dateString)}
+              activeOpacity={0.7}
             >
               <Text style={styles.cellDayNumber}>{item.day}</Text>
               {dayShifts.map(s => {
@@ -265,7 +264,7 @@ export default function ScheduleScreen() {
                 return (
                   <View key={s.id} style={[styles.cellShiftBadge, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                     <Text style={[styles.cellShiftText, { color: theme.text }]} numberOfLines={1}>
-                      {s.dog_name} {loggedInStaffRole === 'receptionist' ? `(${s.staff_name})` : ''}
+                      {s.dog_name}
                     </Text>
                   </View>
                 );
@@ -276,23 +275,27 @@ export default function ScheduleScreen() {
       </View>
 
       <View style={styles.listSection}>
-        <Text style={styles.sectionHeader}>
-          {loggedInStaffRole === 'receptionist' ? 'All Booked Appointments (Receptionist View)' : `My Appointments (${selectedStaff})`}
-        </Text>
+        <Text style={styles.sectionHeader}>Manage Appointments & Cancellations</Text>
         {shifts.length === 0 ? (
           <Text style={styles.emptyText}>No appointments booked yet.</Text>
         ) : (
           shifts.map((item) => {
-            const theme = GROOMER_COLORS[item.staff_name] || GROOMER_COLORS['default'];
+            const isCanceled = item.status === 'Canceled';
             return (
-              <View key={item.id} style={[styles.rowItem, { borderLeftColor: theme.text, borderLeftWidth: 4 }]}>
-                <View>
-                  <Text style={styles.rowText}>🐶 {item.dog_name || 'No Dog'} — Staff: <Text style={{ color: theme.text }}>{item.staff_name}</Text></Text>
+              <View key={item.id} style={[styles.rowItem, isCanceled && styles.canceledRow]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rowText, isCanceled && styles.canceledText]}>
+                    🐶 {item.dog_name} — Staff: {item.staff_name} {isCanceled ? '(Canceled)' : ''}
+                  </Text>
                   <Text style={styles.subText}>{item.date} | {item.time}</Text>
                 </View>
-                <TouchableOpacity onPress={() => handleRemoveShift(item.id)}>
-                  <Text style={styles.removeText}>Remove</Text>
-                </TouchableOpacity>
+                {!isCanceled ? (
+                  <TouchableOpacity onPress={() => handleCancelShift(item.id)} activeOpacity={0.7}>
+                    <Text style={styles.cancelActionText}>Cancel</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.canceledBadgeText}>Archived</Text>
+                )}
               </View>
             );
           })
@@ -316,11 +319,9 @@ const styles = StyleSheet.create({
   selectedChip: { backgroundColor: '#3182ce', borderColor: '#3182ce' },
   chipText: { color: '#4a5568', fontSize: 14, fontWeight: '500' },
   selectedChipText: { color: '#fff' },
-  receptionistBanner: { backgroundColor: '#ebf8ff', color: '#2b6cb0', padding: 8, borderRadius: 6, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   searchResultsContainer: { backgroundColor: '#f7fafc', borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, maxHeight: 150, marginBottom: 5 },
   searchResultItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   searchResultText: { fontSize: 14, color: '#2d3748', fontWeight: '500' },
-  selectedDogIndicator: { fontSize: 13, color: '#2b6cb0', marginBottom: 5 },
   input: { borderWidth: 1, borderColor: '#cbd5e0', borderRadius: 6, padding: 10, backgroundColor: '#fff', color: '#1a202c' },
   addButton: { backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 6 },
   addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
@@ -338,8 +339,11 @@ const styles = StyleSheet.create({
   listSection: { marginBottom: 20 },
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#2d3748', marginBottom: 10 },
   rowItem: { backgroundColor: '#fff', padding: 14, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
+  canceledRow: { backgroundColor: '#fff5f5', borderColor: '#feb2b2', opacity: 0.7 },
   rowText: { fontSize: 15, color: '#2d3748', fontWeight: '600' },
+  canceledText: { textDecorationLine: 'line-through', color: '#e53e3e' },
   subText: { fontSize: 13, color: '#718096', marginTop: 3 },
-  removeText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 },
+  cancelActionText: { color: '#e53e3e', fontWeight: '600', fontSize: 14 },
+  canceledBadgeText: { color: '#a0aec0', fontWeight: '600', fontSize: 12, fontStyle: 'italic' },
   emptyText: { textAlign: 'center', color: '#718096', marginTop: 15, fontSize: 15 }
 });
