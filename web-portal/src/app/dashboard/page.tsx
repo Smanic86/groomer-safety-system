@@ -1,94 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 export default function DashboardPage() {
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const router = useRouter();
   const supabase = createClient();
 
-  const daysInMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  ).getDate();
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
 
-  const firstDayIndex = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  ).getDay();
+  const fetchAppointments = async () => {
+    const { data } = await supabase
+      .from('staff_schedule')
+      .select('*, pets(dog_name, client_name), staff_members(name, role)')
+      .order('date', { ascending: true });
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    if (data) setAppointments(data);
   };
 
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
+      <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Appointment Schedule</h1>
-          <p className="text-xs text-gray-500">Manage your daily salon bookings and calendar slots</p>
+          <h1 className="text-xl font-bold text-gray-900">Appointment Calendar</h1>
+          <p className="text-sm text-gray-500">{monthName} {year}</p>
+        </div>
+        <div className="space-x-1">
+          <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="px-3 py-1 bg-gray-100 rounded text-xs">Prev</button>
+          <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="px-3 py-1 bg-gray-100 rounded text-xs">Next</button>
         </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </h2>
-          <div className="space-x-2">
-            <button
-              onClick={prevMonth}
-              className="px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={nextMonth}
-              className="px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2 text-center font-medium text-xs text-gray-500 mb-2">
+        <div className="grid grid-cols-7 gap-2 text-center font-semibold text-xs text-gray-500 mb-4">
           <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
         </div>
 
         <div className="grid grid-cols-7 gap-2">
           {Array.from({ length: firstDayIndex }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-28 bg-gray-50 rounded-md border border-dashed border-gray-200 opacity-50" />
+            <div key={`empty-${i}`} className="h-28 bg-gray-50 rounded-md border border-gray-100 opacity-40" />
           ))}
 
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const dayNum = i + 1;
-            const formattedMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
-            const formattedDay = String(dayNum).padStart(2, '0');
-            const dateString = `${currentDate.getFullYear()}-${formattedMonth}-${formattedDay}`;
+            const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            const dayAppointments = appointments.filter((app) => app.date === formattedDate);
 
             return (
-              <Link
-                key={dayNum}
-                href={`/dashboard/calendar/${dateString}`}
-                className="h-28 bg-white border border-gray-200 rounded-md p-2 flex flex-col justify-between hover:border-blue-500 hover:shadow-sm transition cursor-pointer text-left"
-              >
-                <span className="text-sm font-semibold text-gray-800">{dayNum}</span>
-                <span className="text-[10px] text-blue-600 font-medium">+ Add Booking</span>
-              </Link>
+              <div key={dayNum} className="h-28 bg-white rounded-md border border-gray-200 p-1.5 overflow-y-auto">
+                <span className="text-xs font-bold text-gray-700">{dayNum}</span>
+                <div className="space-y-1 mt-1">
+                  {dayAppointments.map((app) => (
+                    <div key={app.id} className="p-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-900">
+                      <p className="font-semibold truncate">{app.pets?.dog_name || 'Pet'}</p>
+                      <p className="text-[9px] text-blue-600">{app.time_slot} ({app.staff_members?.name})</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             );
           })}
         </div>
