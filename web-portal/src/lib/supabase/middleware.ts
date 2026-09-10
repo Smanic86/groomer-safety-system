@@ -35,15 +35,9 @@ export async function updateSession(request: NextRequest) {
   const url = request.nextUrl.clone();
   const path = url.pathname;
 
-  // Protect dashboard routes: if not logged in, go to login
+  // Protect dashboard routes only: if not logged in, go to login
   if (!user && path.startsWith('/dashboard')) {
     url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
-
-  // Prevent logged-in users from seeing login/signup pages
-  if (user && (path.startsWith('/login') || path.startsWith('/signup'))) {
-    url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 
