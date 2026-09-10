@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -27,31 +27,25 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // Crucial: Use getUser() instead of getSession() to securely validate auth
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
-  const isAuthRoute = path.startsWith('/login') || path.startsWith('/signup');
-  const isProtectedRoute = path.startsWith('/dashboard');
+  const url = request.nextUrl.clone();
+  const path = url.pathname;
 
-  if (!user && isProtectedRoute) {
-    const url = request.nextUrl.clone();
+  // Protect dashboard routes: if not logged in, go to login
+  if (!user && path.startsWith('/dashboard')) {
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
+  // Prevent logged-in users from seeing login/signup pages
+  if (user && (path.startsWith('/login') || path.startsWith('/signup'))) {
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
 }
-
-export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-};
