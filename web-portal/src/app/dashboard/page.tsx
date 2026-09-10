@@ -3,17 +3,12 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const router = useRouter();
   const supabase = createClient();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  };
 
   const daysInMonth = new Date(
     currentDate.getFullYear(),
@@ -47,12 +42,6 @@ export default function DashboardPage() {
           <h1 className="text-xl font-bold text-gray-900">Appointment Schedule</h1>
           <p className="text-xs text-gray-500">Manage your daily salon bookings and calendar slots</p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition"
-        >
-          Log Out
-        </button>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
@@ -87,14 +76,19 @@ export default function DashboardPage() {
 
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const dayNum = i + 1;
+            const formattedMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const formattedDay = String(dayNum).padStart(2, '0');
+            const dateString = `${currentDate.getFullYear()}-${formattedMonth}-${formattedDay}`;
+
             return (
-              <div
+              <Link
                 key={dayNum}
-                className="h-28 bg-white border border-gray-200 rounded-md p-2 flex flex-col justify-between hover:border-blue-400 transition cursor-pointer"
+                href={`/dashboard/calendar/${dateString}`}
+                className="h-28 bg-white border border-gray-200 rounded-md p-2 flex flex-col justify-between hover:border-blue-500 hover:shadow-sm transition cursor-pointer text-left"
               >
                 <span className="text-sm font-semibold text-gray-800">{dayNum}</span>
-                <span className="text-[10px] text-gray-400">No bookings</span>
-              </div>
+                <span className="text-[10px] text-blue-600 font-medium">+ Add Booking</span>
+              </Link>
             );
           })}
         </div>
