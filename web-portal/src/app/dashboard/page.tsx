@@ -10,7 +10,15 @@ export default function DashboardPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  
+  // Incident modal / inline form state
+  const [incidentApp, setIncidentApp] = useState<any | null>(null);
+  const [incidentStaffId, setIncidentStaffId] = useState('');
+  const [severity, setSeverity] = useState('Low');
+  const [description, setDescription] = useState('');
+  
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -20,7 +28,7 @@ export default function DashboardPage() {
   const fetchData = async () => {
     const { data: appData, error: appError } = await supabase
       .from('staff_schedule')
-      .select('*, pets(dog_name, client_name), staff_members(id, name, role)')
+      .select('*, pets(id, dog_name, client_name), staff_members(id, name, role)')
       .order('date', { ascending: true });
 
     const { data: staffData } = await supabase.from('staff_members').select('*');
@@ -32,10 +40,43 @@ export default function DashboardPage() {
 
   const handleCancelGroom = async (appointmentId: string) => {
     const { error } = await supabase.from('staff_schedule').delete().eq('id', appointmentId);
+    if (error) setErrorMsg(error.message);
+    else fetchData();
+  };
+
+  const handleOpenIncidentForm = (app: any) => {
+    setIncidentApp(app);
+    setIncidentStaffId(app.staff_id || (staffList[0]?.id ?? ''));
+    setSeverity('Low');
+    setDescription('');
+    setSuccessMsg(null);
+  };
+
+  const handleSubmitIncident = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incidentApp) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('Incident_reports').insert([
+      {
+        user_id: user.id,
+        dog_id: incidentApp.pets?.id,
+        staff_id: incidentStaffId,
+        description,
+        severity,
+      },
+    ]);
+
     if (error) {
       setErrorMsg(error.message);
     } else {
-      fetchData();
+      setSuccessMsg('Incident reported successfully!');
+      setTimeout(() => {
+        setIncidentApp(null);
+        setSuccessMsg(null);
+      }, 1500);
     }
   };
 
@@ -55,9 +96,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {errorMsg && (
-        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>
-      )}
+      {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
 
       <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
@@ -76,18 +115,8 @@ export default function DashboardPage() {
             </button>
           ) : (
             <>
-              <button
-                onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="px-3 py-1 bg-gray-100 rounded text-xs font-semibold"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="px-3 py-1 bg-gray-100 rounded text-xs font-semibold"
-              >
-                Next
-              </button>
+              <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="px-3 py-1 bg-gray-100 rounded text-xs font-semibold">Prev</button>
+              <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="px-3 py-1 bg-gray-100 rounded text-xs font-semibold">Next</button>
             </>
           )}
         </div>
@@ -95,9 +124,67 @@ export default function DashboardPage() {
 
       {selectedDay ? (
         <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
-          <h2 className="text-lg font-bold text-gray-900 border-b pb-3">
-            Schedule for {selectedDay}
-          </h2>
+          <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Schedule for {selectedDay}</h2>
+
+          {/* Incident Logging Modal / Box */}
+          {incidentApp && (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-amber-900 text-sm">
+                  Log Incident for {incidentApp.pets?.dog_name} ({incidentApp.pets?.client_name})
+                </h3>
+                <button onClick={() => setIncidentApp(null)} className="text-xs text-gray-600 hover:text-black">✕ Close</button>
+              </div>
+
+              {successMsg && <div className="p-2 bg-green-100 text-green-800 text-xs rounded">{successMsg}</div>}
+
+              <form onSubmit={handleSubmitIncident} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Groomer Involved (Editable)</label>
+                  <select
+                    value={incidentStaffId}
+                    onChange={(e) => setIncidentStaffId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-xs"
+                    required
+                  >
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Severity Level</label>
+                  <select
+                    value={severity}
+                    onChange={(e) => setSeverity(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-xs"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">What Happened?</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe the incident details..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-3 flex justify-end space-x-2">
+                  <button type="button" onClick={() => setIncidentApp(null)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-xs font-semibold">Cancel</button>
+                  <button type="submit" className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold">Save Incident Report</button>
+                </div>
+              </form>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {staffList.map((staff, index) => {
@@ -125,12 +212,20 @@ export default function DashboardPage() {
                             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
                               {app.time_slot}
                             </span>
-                            <button
-                              onClick={() => handleCancelGroom(app.id)}
-                              className="text-[10px] text-red-600 hover:text-red-800 font-semibold underline"
-                            >
-                              Cancel Groom
-                            </button>
+                            <div className="space-x-2">
+                              <button
+                                onClick={() => handleOpenIncidentForm(app)}
+                                className="text-[10px] text-amber-600 hover:text-amber-800 font-semibold underline"
+                              >
+                                Report Incident
+                              </button>
+                              <button
+                                onClick={() => handleCancelGroom(app.id)}
+                                className="text-[10px] text-red-600 hover:text-red-800 font-semibold underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                           <div>
                             <p className="text-xs font-bold text-gray-900">{app.pets?.dog_name || 'Pet'}</p>
