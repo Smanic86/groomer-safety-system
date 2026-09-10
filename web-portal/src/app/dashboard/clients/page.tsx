@@ -48,7 +48,7 @@ export default function ClientsPage() {
     setLoading(false);
   };
 
-  const toggleCancellationList = async (id: currentStatus, currentStatus: boolean) => {
+  const toggleCancellationList = async (id: string, currentStatus: boolean) => {
     await supabase.from('dogs').update({ on_cancellation_list: !currentStatus }).eq('id', id);
     fetchDogs();
   };
