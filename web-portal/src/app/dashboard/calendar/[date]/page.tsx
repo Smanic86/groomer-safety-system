@@ -9,9 +9,8 @@ export default function DaySchedulePage({ params }: { params: Promise<{ date: st
   const date = resolvedParams.date;
 
   const [timeSlot, setTimeSlot] = useState('09:00 AM');
-  const [clientName, setClientName] = useState('');
   const [dogName, setDogName] = useState('');
-  const [groomer, setGroomer] = useState('Default Groomer');
+  const [groomer, setGroomer] = useState('Main Groomer');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -26,13 +25,12 @@ export default function DaySchedulePage({ params }: { params: Promise<{ date: st
 
     if (!user) return;
 
-    // You can also save this to a dedicated appointments table in Supabase
     const { error } = await supabase.from('safety_evaluations').insert([
       {
         user_id: user.id,
-        client_name: `${clientName} [${timeSlot} - Groomer: ${groomer}]`,
+        client_name: `Groomer: ${groomer}`,
         dog_name: dogName,
-        breed: `Date: ${date}`,
+        breed: `Date: ${date} @ ${timeSlot}`,
         temperament: 'Scheduled',
       },
     ]);
@@ -69,18 +67,6 @@ export default function DaySchedulePage({ params }: { params: Promise<{ date: st
             <option value="01:00 PM">01:00 PM</option>
             <option value="03:00 PM">03:00 PM</option>
           </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-          <input
-            type="text"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-            placeholder="Jane Doe"
-          />
         </div>
 
         <div>
