@@ -1,73 +1,93 @@
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+// Copyright © 2026 Groomer Safety Portal. All rights reserved.
 
-const SEVERITY_STYLES: Record<string, string> = {
-  minor: 'bg-green-100 text-green-700',
-  moderate: 'bg-yellow-100 text-yellow-700',
-  severe: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
-};
+'use client';
 
-export default async function IncidentsPage() {
-  const supabase = await createClient();
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
-  const { data: incidents, error } = await supabase
-    .from('incident_reports')
-    .select('id, incident_date, severity, bite_occurred, required_medical_attention, description, pets(id, name), profiles(full_name)')
-    .order('incident_date', { ascending: false });
+export default function IncidentsPage() {
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  const supabase = createClient();
 
-  if (error) {
-    return <p className="text-red-600">Error loading incidents: {error.message}</p>;
-  }
+  useEffect(() => {
+    fetchIncidents();
+  }, []);
+
+  const fetchIncidents = async () => {
+    setLoading(true);
+    // Fetch incidents and pets separately to avoid complex schema join errors
+    const { data: incidentData, error: incidentError } = await supabase
+      .from('incident_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (incidentError) {
+      setErrorMsg(incidentError.message);
+      setLoading(false);
+      return;
+    }
+
+    const { data: petData } = await supabase.from('pets').select('id, dog_name, client_name');
+    const petMap = new Map(petData?.map((p: any) => [p.id, p]) || []);
+
+    // Merge pet details into incidents locally
+    const enrichedIncidents = (incidentData || []).map((inc: any) => ({
+      ...inc,
+      pet: inc.pet_id ? petMap.get(inc.pet_id) : null,
+    }));
+
+    setIncidents(enrichedIncidents);
+    setLoading(false);
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Incident Reports</h2>
-        <span className="text-sm text-gray-500">{incidents?.length ?? 0} report(s)</span>
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <h1 className="text-xl font-bold text-gray-900">Incident & Safety Reports</h1>
+        <p className="text-sm text-gray-500">Review pre-groom safety evaluations and logged behavioral incidents.</p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-left">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Pet</th>
-              <th className="px-4 py-3">Severity</th>
-              <th className="px-4 py-3">Bite</th>
-              <th className="px-4 py-3">Medical</th>
-              <th className="px-4 py-3">Groomer</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {incidents?.map((incident) => {
-              const pet = Array.isArray(incident.pets) ? incident.pets[0] : incident.pets;
-              const groomer = Array.isArray(incident.profiles) ? incident.profiles[0] : incident.profiles;
-              return (
-                <tr key={incident.id} className="border-t">
-                  <td className="px-4 py-3 text-gray-600">
-                    {new Date(incident.incident_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{pet?.name ?? 'Unknown'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${SEVERITY_STYLES[incident.severity] ?? ''}`}>
-                      {incident.severity.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{incident.bite_occurred ? '🩸 Yes' : 'No'}</td>
-                  <td className="px-4 py-3">{incident.required_medical_attention ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3 text-gray-600">{groomer?.full_name ?? 'Unknown'}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/dashboard/incidents/${incident.id}`} className="text-blue-600 hover:underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {errorMsg && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">
+          Error loading incidents: {errorMsg}
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 p-6">
+        {loading ? (
+          <p className="text-sm text-gray-500 py-4">Loading reports...</p>
+        ) : incidents.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4">No incident reports recorded yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {incidents.map((incident) => (
+              <div key={incident.id} className="p-4 border border-gray-200 rounded-lg space-y-2 bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm">
+                      Dog: {incident.pet?.dog_name || 'Unknown Pet'} 
+                      <span className="text-xs font-normal text-gray-500 ml-2">
+                        (Owner: {incident.pet?.client_name || 'N/A'})
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Logged on: {new Date(incident.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded">
+                    Safety Log
+                  </span>
+                </div>
+                <p className="text-xs text-gray-700 bg-white p-3 rounded border border-gray-100">
+                  {incident.notes || incident.description || 'No additional notes provided.'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
