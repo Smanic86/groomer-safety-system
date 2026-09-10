@@ -39,7 +39,7 @@ export default function SignUpPage() {
     } else {
       setSuccessMsg('Account created successfully! Redirecting...');
       setTimeout(() => {
-        router.push('/schedule');
+        router.push('/login');
       }, 2000);
     }
   }
