@@ -2,82 +2,224 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
-export default function DashboardPage() {
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
+export default function ClientsPage() {
+  const [dogs, setDogs] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dogName, setDogName] = useState('');
+  const [breed, setBreed] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    fetchAppointments();
+    fetchDogs();
   }, []);
 
-  const fetchAppointments = async () => {
-    const { data, error } = await supabase
-      .from('staff_schedule')
-      .select('*, dog_profiles(dog_name, client_name), staff_members(name, role)')
-      .order('date', { ascending: true });
-
-    if (!error && data) {
-      setAppointments(data);
+  const fetchDogs = async () => {
+    const { data, error } = await supabase.from('dog_profiles').select('*').order('created_at', { ascending: false });
+    if (error) {
+      setErrorMsg(error.message);
+    } else if (data) {
+      setDogs(data);
     }
   };
 
-  // Simple calendar month helper logic
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const monthName = currentDate.toLocaleString('default', { month: 'long' });
+  const handleAddDog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMsg('You must be logged in to add a dog profile.');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from('dog_profiles').insert([
+      {
+        user_id: user.id,
+        dog_name: dogName,
+        breed,
+        client_name: clientName,
+        on_cancellation_list: false,
+      },
+    ]);
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setDogName('');
+      setBreed('');
+      setClientName('');
+      fetchDogs();
+    }
+    setLoading(false);
+  };
+
+  // Quick seed helper for testing appointments and calendar workflow
+  const handleAddTestData = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMsg('You must be logged in.');
+      setLoading(false);
+      return;
+    }
+
+    // Insert a test staff member first if none exist, then a dog
+    const { data: staffData } = await supabase.from('staff_members').select('id').limit(1);
+    let staffId = staffData?.[0]?.id;
+
+    if (!staffId) {
+      const { data: newStaff } = await supabase.from('staff_members').insert([
+        { user_id: user.id, name: 'Sarah Jenkins', role: 'Senior Groomer' }
+      ]).select('id').single();
+      staffId = newStaff?.id;
+    }
+
+    const { error } = await supabase.from('dog_profiles').insert([
+      { user_id: user.id, dog_name: 'Buster', breed: 'Shih Tzu', client_name: 'John Smith', on_cancellation_list: true },
+      { user_id: user.id, dog_name: 'Luna', breed: 'Pomeranian Mix', client_name: 'Emma Watson', on_cancellation_list: false }
+    ]);
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      fetchDogs();
+    }
+    setLoading(false);
+  };
+
+  const toggleCancellationList = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase.from('dog_profiles').update({ on_cancellation_list: !currentStatus }).eq('id', id);
+    if (!error) {
+      fetchDogs();
+    }
+  };
+
+  const filteredDogs = dogs.filter(
+    (d) =>
+      d.dog_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.client_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
+      {errorMsg && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">
+          Error: {errorMsg}
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Appointment Calendar</h1>
-          <p className="text-sm text-gray-500">Manage and view scheduled grooming sessions</p>
+          <h1 className="text-xl font-bold text-gray-900">Client & Pet Management</h1>
+          <p className="text-sm text-gray-500">Add profiles manually or quickly seed test data to check bookings</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <span className="font-semibold text-gray-800">{monthName} {year}</span>
-          <div className="space-x-1">
-            <button onClick={prevMonth} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md transition">Prev</button>
-            <button onClick={nextMonth} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md transition">Next</button>
-          </div>
-        </div>
+        <button
+          onClick={handleAddTestData}
+          disabled={loading}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md text-xs px-3 py-2 transition"
+        >
+          {loading ? 'Adding...' : '⚡ Quick Add Test Profiles & Staff'}
+        </button>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <div className="grid grid-cols-7 gap-2 text-center font-semibold text-xs text-gray-500 mb-4">
-          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Dog Profile</h2>
+        <form onSubmit={handleAddDog} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <input
+            type="text"
+            placeholder="Client Name"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            required
+            className="px-3 py-2 border border-gray-300 rounded-md text-black text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Dog Name"
+            value={dogName}
+            onChange={(e) => setDogName(e.target.value)}
+            required
+            className="px-3 py-2 border border-gray-300 rounded-md text-black text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Breed (e.g. Shih Tzu)"
+            value={breed}
+            onChange={(e) => setBreed(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-black text-sm"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md text-sm px-4 py-2 transition"
+          >
+            {loading ? 'Adding...' : 'Save Profile'}
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-800">Client & Pet Directory</h2>
+          <input
+            type="text"
+            placeholder="Search dog or owner..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-md text-black text-sm w-64"
+          />
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
-          {Array.from({ length: firstDayIndex }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-28 bg-gray-50 rounded-md border border-gray-100 opacity-40" />
-          ))}
+        <div className="divide-y divide-gray-200">
+          {filteredDogs.length === 0 ? (
+            <p className="text-sm text-gray-500 py-4">No dog profiles found. Click "Quick Add Test Profiles & Staff" above to instantly populate test entries!</p>
+          ) : (
+            filteredDogs.map((dog) => (
+              <div key={dog.id} className="py-4 flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {dog.dog_name}{' '}
+                    <span className="text-xs font-normal text-gray-500">({dog.breed || 'Unknown breed'})</span>
+                  </h3>
+                  <p className="text-sm text-gray-600">Owner: {dog.client_name}</p>
+                  {dog.on_cancellation_list && (
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-semibold rounded">
+                      On Cancellation List
+                    </span>
+                  )}
+                </div>
 
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const dayNum = i + 1;
-            const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const dayAppointments = appointments.filter((app) => app.date === formattedDate);
-
-            return (
-              <div key={dayNum} className="h-28 bg-white rounded-md border border-gray-200 p-1.5 overflow-y-auto flex flex-col justify-between">
-                <span className="text-xs font-bold text-gray-700">{dayNum}</span>
-                <div className="space-y-1 mt-1">
-                  {dayAppointments.map((app) => (
-                    <div key={app.id} className="p-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-900">
-                      <p className="font-semibold truncate">{app.dog_profiles?.dog_name || 'Dog'}</p>
-                      <p className="text-[9px] text-blue-600">{app.time_slot} ({app.staff_members?.name})</p>
-                    </div>
-                  ))}
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleCancellationList(dog.id, dog.on_cancellation_list)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md border transition ${
+                      dog.on_cancellation_list
+                        ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {dog.on_cancellation_list ? 'Remove from Cancellation List' : 'Add to Cancellation List'}
+                  </button>
+                  <Link
+                    href={`/dashboard/clients/${dog.id}`}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition"
+                  >
+                    Book Appointment
+                  </Link>
                 </div>
               </div>
-            );
-          })}
+            ))
+          )}
         </div>
       </div>
     </div>
