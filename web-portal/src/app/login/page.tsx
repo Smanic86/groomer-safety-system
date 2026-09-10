@@ -35,7 +35,7 @@ export default function LoginPage() {
     if (error) {
       setErrorMsg(error.message);
     } else {
-      router.push('/schedule');
+      router.push('/dashboard');
     }
   }
 
@@ -64,12 +64,12 @@ export default function LoginPage() {
             required
           />
           <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? 'Logging In...' : 'Log In'}
+            {loading ? 'Logging in...' : 'Log In'}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '15px', fontSize: '13px', color: '#4a5568' }}>
-          Need an account? <a href="/signup" style={{ color: '#3182ce', fontWeight: '600' }}>Sign up here</a>
+          Don't have an account? <a href="/signup" style={{ color: '#3182ce', fontWeight: '600' }}>Sign up here</a>
         </p>
       </div>
     </div>
