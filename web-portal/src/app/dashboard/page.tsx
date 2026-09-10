@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -17,15 +18,25 @@ export default function DashboardPage() {
   }, []);
 
   const fetchData = async () => {
-    const { data: appData } = await supabase
+    const { data: appData, error: appError } = await supabase
       .from('staff_schedule')
       .select('*, pets(dog_name, client_name), staff_members(id, name, role)')
       .order('date', { ascending: true });
 
     const { data: staffData } = await supabase.from('staff_members').select('*');
 
+    if (appError) setErrorMsg(appError.message);
     if (appData) setAppointments(appData);
     if (staffData) setStaffList(staffData);
+  };
+
+  const handleCancelGroom = async (appointmentId: string) => {
+    const { error } = await supabase.from('staff_schedule').delete().eq('id', appointmentId);
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      fetchData();
+    }
   };
 
   const year = currentDate.getFullYear();
@@ -34,7 +45,6 @@ export default function DashboardPage() {
   const firstDayIndex = new Date(year, month, 1).getDay();
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
-  // Distinct color palette for groomer columns
   const groomerColors = [
     { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900', badge: 'bg-indigo-600' },
     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900', badge: 'bg-emerald-600' },
@@ -45,6 +55,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {errorMsg && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Appointment Calendar</h1>
@@ -80,7 +94,6 @@ export default function DashboardPage() {
       </div>
 
       {selectedDay ? (
-        // Day Detail Groomer Column View
         <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
           <h2 className="text-lg font-bold text-gray-900 border-b pb-3">
             Schedule for {selectedDay}
@@ -107,12 +120,22 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-500 italic py-4 text-center">No bookings scheduled</p>
                     ) : (
                       staffAppointments.map((app) => (
-                        <div key={app.id} className="bg-white p-3 rounded-md shadow-xs border border-gray-100 space-y-1">
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                            {app.time_slot}
-                          </span>
-                          <p className="text-xs font-bold text-gray-900 mt-1">{app.pets?.dog_name || 'Pet'}</p>
-                          <p className="text-[11px] text-gray-600">Owner: {app.pets?.client_name}</p>
+                        <div key={app.id} className="bg-white p-3 rounded-md shadow-xs border border-gray-100 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {app.time_slot}
+                            </span>
+                            <button
+                              onClick={() => handleCancelGroom(app.id)}
+                              className="text-[10px] text-red-600 hover:text-red-800 font-semibold underline"
+                            >
+                              Cancel Groom
+                            </button>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-900">{app.pets?.dog_name || 'Pet'}</p>
+                            <p className="text-[11px] text-gray-600">Owner: {app.pets?.client_name}</p>
+                          </div>
                         </div>
                       ))
                     )}
@@ -123,7 +146,6 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : (
-        // Monthly Grid View
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="grid grid-cols-7 gap-2 text-center font-semibold text-xs text-gray-500 mb-4">
             <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
