@@ -1,3 +1,5 @@
+// Copyright © 2026 Groomer Safety Portal. All rights reserved.
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +9,7 @@ import Link from 'next/link';
 export default function CancellationsPage() {
   const [cancellations, setCancellations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -20,21 +23,29 @@ export default function CancellationsPage() {
       .eq('on_cancellation_list', true)
       .order('dog_name', { ascending: true });
 
-    if (!error && data) {
+    if (error) {
+      setErrorMsg(error.message);
+    } else if (data) {
       setCancellations(data);
     }
     setLoading(false);
   };
 
   const removeFromCancellationList = async (id: string) => {
-    await supabase.from('pets').update({ on_cancellation_list: false }).eq('id', id);
-    fetchCancellations();
+    const { error } = await supabase.from('pets').update({ on_cancellation_list: false }).eq('id', id);
+    if (!error) {
+      fetchCancellations();
+    }
   };
 
   if (loading) return <p className="p-6 text-sm text-gray-500">Loading cancellation list...</p>;
 
   return (
     <div className="space-y-6">
+      {errorMsg && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">Cancellation / Standby List</h1>
         <p className="text-sm text-gray-500">Pets waiting for an earlier slot or cancellation opening</p>
