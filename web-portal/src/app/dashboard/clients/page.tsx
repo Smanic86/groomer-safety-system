@@ -11,6 +11,7 @@ export default function ClientsPage() {
   const [breed, setBreed] = useState('');
   const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -18,18 +19,27 @@ export default function ClientsPage() {
   }, []);
 
   const fetchDogs = async () => {
-    const { data } = await supabase.from('dogs').select('*').order('created_at', { ascending: false });
-    if (data) setDogs(data);
+    const { data, error } = await supabase.from('dog_profiles').select('*').order('created_at', { ascending: false });
+    if (error) {
+      setErrorMsg(error.message);
+    } else if (data) {
+      setDogs(data);
+    }
   };
 
   const handleAddDog = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setErrorMsg('You must be logged in to add a dog profile.');
+      setLoading(false);
+      return;
+    }
 
-    const { error } = await supabase.from('dogs').insert([
+    const { error } = await supabase.from('dog_profiles').insert([
       {
         user_id: user.id,
         dog_name: dogName,
@@ -39,7 +49,9 @@ export default function ClientsPage() {
       },
     ]);
 
-    if (!error) {
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
       setDogName('');
       setBreed('');
       setClientName('');
@@ -49,18 +61,26 @@ export default function ClientsPage() {
   };
 
   const toggleCancellationList = async (id: string, currentStatus: boolean) => {
-    await supabase.from('dogs').update({ on_cancellation_list: !currentStatus }).eq('id', id);
-    fetchDogs();
+    const { error } = await supabase.from('dog_profiles').update({ on_cancellation_list: !currentStatus }).eq('id', id);
+    if (!error) {
+      fetchDogs();
+    }
   };
 
   const filteredDogs = dogs.filter(
     (d) =>
-      d.dog_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.client_name.toLowerCase().includes(searchQuery.toLowerCase())
+      d.dog_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.client_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
+      {errorMsg && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">
+          Error: {errorMsg}
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h1 className="text-xl font-bold text-gray-900 mb-4">Add New Dog Profile</h1>
         <form onSubmit={handleAddDog} className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -111,7 +131,7 @@ export default function ClientsPage() {
 
         <div className="divide-y divide-gray-200">
           {filteredDogs.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">No dogs found.</p>
+            <p className="text-sm text-gray-500 py-4">No dog profiles found. Try adding one above!</p>
           ) : (
             filteredDogs.map((dog) => (
               <div key={dog.id} className="py-4 flex justify-between items-center">
@@ -130,6 +150,7 @@ export default function ClientsPage() {
 
                 <div className="flex items-center space-x-3">
                   <button
+                    type="button"
                     onClick={() => toggleCancellationList(dog.id, dog.on_cancellation_list)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md border transition ${
                       dog.on_cancellation_list

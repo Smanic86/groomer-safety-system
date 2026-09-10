@@ -9,42 +9,60 @@ export default function DogBookingPage({ params }: { params: Promise<{ id: strin
   const dogId = resolvedParams.id;
 
   const [dog, setDog] = useState<any>(null);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [staffId, setStaffId] = useState('');
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('09:00 AM');
-  const [groomer, setGroomer] = useState('Main Groomer');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     fetchDog();
+    fetchStaff();
   }, [dogId]);
 
   const fetchDog = async () => {
-    const { data } = await supabase.from('dogs').select('*').eq('id', dogId).single();
+    const { data } = await supabase.from('dog_profiles').select('*').eq('id', dogId).single();
     if (data) setDog(data);
+  };
+
+  const fetchStaff = async () => {
+    const { data } = await supabase.from('staff_members').select('*');
+    if (data && data.length > 0) {
+      setStaffList(data);
+      setStaffId(data[0].id);
+    }
   };
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setErrorMsg('You must be logged in.');
+      setLoading(false);
+      return;
+    }
 
-    const { error } = await supabase.from('appointments').insert([
+    const { error } = await supabase.from('staff_schedule').insert([
       {
         user_id: user.id,
         dog_id: dogId,
+        staff_id: staffId,
         date,
         time_slot: timeSlot,
-        groomer,
       },
     ]);
 
-    if (!error) {
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
       setSuccess(true);
       setTimeout(() => {
         router.push('/dashboard/clients');
@@ -60,7 +78,7 @@ export default function DogBookingPage({ params }: { params: Promise<{ id: strin
     <main className="max-w-xl mx-auto bg-white p-8 rounded-lg shadow-sm space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Book for {dog.dog_name}</h1>
+          <h1 className="text-xl font-bold text-gray-900">Book Schedule for {dog.dog_name}</h1>
           <p className="text-sm text-gray-500">Owner: {dog.client_name} ({dog.breed || 'General'})</p>
         </div>
         <button onClick={() => router.push('/dashboard/clients')} className="text-sm text-blue-600 hover:underline">
@@ -68,9 +86,13 @@ export default function DogBookingPage({ params }: { params: Promise<{ id: strin
         </button>
       </div>
 
+      {errorMsg && (
+        <div className="p-3 bg-red-100 text-red-700 text-sm rounded-md">{errorMsg}</div>
+      )}
+
       {success && (
         <div className="p-3 bg-green-100 text-green-700 text-sm rounded-md font-semibold">
-          Appointment successfully booked! Returning to clients...
+          Schedule successfully booked! Returning to clients...
         </div>
       )}
 
@@ -101,24 +123,31 @@ export default function DogBookingPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Assign Groomer</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Assign Staff Member</label>
           <select
-            value={groomer}
-            onChange={(e) => setGroomer(e.target.value)}
+            value={staffId}
+            onChange={(e) => setStaffId(e.target.value)}
+            required
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white"
           >
-            <option value="Main Groomer">Main Groomer</option>
-            <option value="Assistant Groomer">Assistant Groomer</option>
+            {staffList.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name} ({member.role})
+              </option>
+            ))}
           </select>
         </div>
 
         <button
           type="submit"
-          disabled={loading || success}
+          disabled={loading || success || staffList.length === 0}
           className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition disabled:opacity-50"
         >
-          {loading ? 'Booking...' : success ? 'Booked!' : 'Confirm Booking'}
+          {loading ? 'Booking...' : success ? 'Booked!' : 'Confirm Schedule'}
         </button>
+        {staffList.length === 0 && (
+          <p className="text-xs text-red-500 text-center">Please add staff members in the Staff tab before booking.</p>
+        )}
       </form>
     </main>
   );
