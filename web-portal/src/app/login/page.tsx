@@ -1,79 +1,130 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+
+/**
+ * Groomer Safety Management System - Web Portal Login
+ * © 2026 Dog Days Grooming & Development. All rights reserved.
+ */
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function LoginPage() {
-  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setErrorMsg('');
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password.trim(),
+    });
 
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      setErrorMsg(error.message);
     } else {
-      router.push('/dashboard');
-      router.refresh();
+      router.push('/schedule');
     }
   }
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-sm space-y-4 rounded-lg border bg-white p-8 shadow-sm"
-      >
-        <h1 className="text-2xl font-bold text-center">Groomer Portal Login</h1>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Groomer Portal Login</h1>
+        
+        {errorMsg ? <p style={styles.error}>{errorMsg}</p> : null}
 
-        {error && (
-          <p className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>
-        )}
+        <form onSubmit={handleLogin} style={styles.form}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={styles.input}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={styles.input}
+            required
+          />
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Logging In...' : 'Log In'}
+          </button>
+        </form>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2 text-gray-900"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2 text-gray-900"
-          required
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-blue-600 py-2 text-white font-semibold disabled:opacity-60"
-        >
-          {loading ? 'Logging in...' : 'Log In'}
-        </button>
-      </form>
+        <p style={{ textAlign: 'center', marginTop: '15px', fontSize: '13px', color: '#4a5568' }}>
+          Need an account? <a href="/signup" style={{ color: '#3182ce', fontWeight: '600' }}>Sign up here</a>
+        </p>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    backgroundColor: '#f5f5f5',
+  } as React.CSSProperties,
+  card: {
+    backgroundColor: '#ffffff',
+    padding: '30px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    width: '100%',
+    maxWidth: '400px',
+  } as React.CSSProperties,
+  title: {
+    textAlign: 'center' as const,
+    fontSize: '20px',
+    fontWeight: 'bold' as const,
+    marginBottom: '20px',
+    color: '#1a202c',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px',
+  },
+  input: {
+    padding: '10px',
+    borderRadius: '6px',
+    border: '1px solid #cbd5e0',
+    fontSize: '14px',
+    color: '#1a202c',
+  },
+  button: {
+    backgroundColor: '#3182ce',
+    color: '#ffffff',
+    padding: '10px',
+    borderRadius: '6px',
+    border: 'none',
+    fontWeight: 'bold' as const,
+    cursor: 'pointer',
+    marginTop: '5px',
+  },
+  error: {
+    color: '#e53e3e',
+    fontSize: '13px',
+    marginBottom: '10px',
+    textAlign: 'center' as const,
+  },
+};
