@@ -1,3 +1,5 @@
+// Copyright © 2026 Groomer Safety Portal. All rights reserved.
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -167,7 +169,10 @@ export default function ClientsPage() {
               <div key={pet.id} className="py-4 flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold text-gray-900">
-                    {pet.dog_name} <span className="text-xs font-normal text-gray-500">({pet.breed || 'Unknown'})</span>
+                    <Link href={`/dashboard/clients/${pet.id}`} className="text-blue-600 hover:underline hover:text-blue-800">
+                      {pet.dog_name}
+                    </Link>{' '}
+                    <span className="text-xs font-normal text-gray-500">({pet.breed || 'Unknown'})</span>
                   </h3>
                   <p className="text-sm text-gray-600">Owner: {pet.client_name}</p>
                   {pet.on_cancellation_list && (
@@ -183,6 +188,12 @@ export default function ClientsPage() {
                   >
                     {pet.on_cancellation_list ? 'Remove from Cancellation' : 'Add to Cancellation'}
                   </button>
+                  <Link
+                    href={`/dashboard/clients/${pet.id}`}
+                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-md transition"
+                  >
+                    View Profile & Notes
+                  </Link>
                   <Link
                     href={`/dashboard/clients/${pet.id}`}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition"
