@@ -11,9 +11,10 @@ export default function DashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   
-  // Incident modal / inline form state
+  // Incident form state
   const [incidentApp, setIncidentApp] = useState<any | null>(null);
   const [incidentStaffId, setIncidentStaffId] = useState('');
+  const [incidentTarget, setIncidentTarget] = useState('Dog');
   const [severity, setSeverity] = useState('Low');
   const [description, setDescription] = useState('');
   
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const handleOpenIncidentForm = (app: any) => {
     setIncidentApp(app);
     setIncidentStaffId(app.staff_id || (staffList[0]?.id ?? ''));
+    setIncidentTarget('Dog');
     setSeverity('Low');
     setDescription('');
     setSuccessMsg(null);
@@ -64,6 +66,7 @@ export default function DashboardPage() {
         user_id: user.id,
         dog_id: incidentApp.pets?.id,
         staff_id: incidentStaffId,
+        incident_target: incidentTarget,
         description,
         severity,
       },
@@ -126,7 +129,6 @@ export default function DashboardPage() {
         <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
           <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Schedule for {selectedDay}</h2>
 
-          {/* Incident Logging Modal / Box */}
           {incidentApp && (
             <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg space-y-4">
               <div className="flex justify-between items-center">
@@ -139,6 +141,18 @@ export default function DashboardPage() {
               {successMsg && <div className="p-2 bg-green-100 text-green-800 text-xs rounded">{successMsg}</div>}
 
               <form onSubmit={handleSubmitIncident} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Accident Affected</label>
+                  <select
+                    value={incidentTarget}
+                    onChange={(e) => setIncidentTarget(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-xs"
+                  >
+                    <option value="Dog">Dog</option>
+                    <option value="Groomer">Groomer</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Groomer Involved (Editable)</label>
                   <select
