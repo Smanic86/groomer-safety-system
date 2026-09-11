@@ -8,11 +8,13 @@ import { createClient } from '@/lib/supabase/client';
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [pets, setPets] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedPetId, setSelectedPetId] = useState('');
   const [clientName, setClientName] = useState('');
   const [dogName, setDogName] = useState('');
   const [service, setService] = useState('Full Groom');
+  const [groomerName, setGroomerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function CalendarPage() {
   useEffect(() => {
     fetchAppointments();
     fetchPets();
+    fetchStaff();
   }, []);
 
   const fetchAppointments = async () => {
@@ -34,6 +37,18 @@ export default function CalendarPage() {
     const { data, error } = await supabase.from('pets').select('*');
     if (error) setErrorMsg(error.message);
     else if (data) setPets(data);
+  };
+
+  const fetchStaff = async () => {
+    const { data, error } = await supabase.from('staff').select('*');
+    if (error) {
+      // Fallback if staff table doesn't exist yet
+      setStaff([{ id: '1', name: 'Main Groomer' }]);
+    } else if (data && data.length > 0) {
+      setStaff(data);
+    } else {
+      setStaff([{ id: '1', name: 'Main Groomer' }]);
+    }
   };
 
   const handlePetSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -70,6 +85,7 @@ export default function CalendarPage() {
         client_name: clientName,
         dog_name: dogName,
         service_type: service,
+        groomer_name: groomerName || 'Primary Groomer',
         appointment_date: selectedDate,
       },
     ]);
@@ -81,6 +97,7 @@ export default function CalendarPage() {
       setSelectedPetId('');
       setClientName('');
       setDogName('');
+      setGroomerName('');
       fetchAppointments();
       setTimeout(() => setSuccessMsg(null), 3000);
     }
@@ -105,7 +122,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">Appointment Scheduler</h1>
-        <p className="text-sm text-gray-500">Click any day on the grid below, pick a pet from your database, and book.</p>
+        <p className="text-sm text-gray-500">Click any day on the grid below, pick a pet, assign a groomer, and book.</p>
       </div>
 
       {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
@@ -183,6 +200,22 @@ export default function CalendarPage() {
               />
             </div>
             <div>
+              <label className="block font-medium text-gray-700 mb-1">Assign Groomer</label>
+              <select
+                value={groomerName}
+                onChange={(e) => setGroomerName(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-black bg-white"
+                required
+              >
+                <option value="">-- Select Groomer --</option>
+                {staff.map((s) => (
+                  <option key={s.id || s.name} value={s.name || s.staff_name}>
+                    {s.name || s.staff_name || 'Groomer'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block font-medium text-gray-700 mb-1">Service Type</label>
               <select
                 value={service}
@@ -214,7 +247,7 @@ export default function CalendarPage() {
                 <div key={app.id} className="p-3 bg-gray-50 border rounded-lg flex justify-between items-center text-xs">
                   <div>
                     <p className="font-bold text-gray-900">{app.dog_name} ({app.service_type})</p>
-                    <p className="text-gray-600">Client: {app.client_name}</p>
+                    <p className="text-gray-600">Client: {app.client_name} | Groomer: <span className="font-semibold text-gray-900">{app.groomer_name || 'Primary Groomer'}</span></p>
                     <p className="text-blue-600 font-semibold mt-0.5">Date: {app.appointment_date}</p>
                   </div>
                 </div>
