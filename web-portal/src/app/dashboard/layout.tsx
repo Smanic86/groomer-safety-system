@@ -3,70 +3,59 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { usePathname } from 'next/navigation';
+import LogoutButton from './logout-button';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
-
-  const navLinks = [
-    { name: 'Dashboard', href: '/dashboard' },
+  const navigation = [
+    { name: 'Dashboard Overview', href: '/dashboard' },
     { name: 'Client Directory', href: '/dashboard/clients' },
     { name: 'Calendar & Bookings', href: '/dashboard/calendar' },
     { name: 'Client Intake', href: '/dashboard/intake' },
+    { name: 'Pet Profiles', href: '/dashboard/pets' },
+    { name: 'Safety & Compliance', href: '/dashboard/compliance' },
+    { name: 'Incident Reports', href: '/dashboard/incidents' },
+    { name: 'Staff Management', href: '/dashboard/staff' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-r border-gray-200 p-6 flex flex-col justify-between shrink-0">
+    <div className="flex h-screen bg-gray-50 text-gray-900">
+      <aside className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col justify-between">
         <div className="space-y-6">
           <div>
-            <h1 className="font-bold text-gray-900 text-base">Groomer Safety Portal</h1>
-            <p className="text-xs text-gray-500">Salon Management Hub</p>
+            <h1 className="text-base font-bold text-gray-900">Paws & Style Salon Portal</h1>
+            <p className="text-xs text-gray-500 mt-0.5">Professional Canine Grooming & Safety</p>
           </div>
-
           <nav className="space-y-1">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={item.name}
+                  href={item.href}
                   className={`block px-3 py-2 rounded-md text-xs font-medium transition ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-50 text-blue-700 font-semibold'
+                      : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {link.name}
+                  {item.name}
                 </Link>
               );
             })}
           </nav>
         </div>
-
-        <div className="pt-6 border-t border-gray-100">
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-md transition"
-          >
-            Sign Out
-          </button>
+        <div className="pt-4 border-t border-gray-200">
+          <LogoutButton />
         </div>
       </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
   );
 }

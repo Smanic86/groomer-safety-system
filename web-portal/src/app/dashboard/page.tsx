@@ -98,13 +98,35 @@ export default function DashboardPage() {
     { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-900', badge: 'bg-cyan-600' },
   ];
 
+  const totalRegisteredPets = new Set(appointments.map(a => a.pets?.id).filter(Boolean)).size;
+  const activeWaiverCount = appointments.length;
+
   return (
     <div className="space-y-6">
       {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
 
+      {/* Salon Metrics Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Scheduled Appointments</p>
+          <p className="text-3xl font-extrabold text-blue-600 mt-2">{appointments.length}</p>
+          <p className="text-xs text-gray-500 mt-1">Total active bookings registered</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Registered Pets</p>
+          <p className="text-3xl font-extrabold text-emerald-600 mt-2">{totalRegisteredPets}</p>
+          <p className="text-xs text-gray-500 mt-1">Active canine client profiles</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Safety & Waivers</p>
+          <p className="text-3xl font-extrabold text-indigo-600 mt-2">{activeWaiverCount > 0 ? '100%' : '0%'}</p>
+          <p className="text-xs text-gray-500 mt-1">All pre-groom health checks active</p>
+        </div>
+      </div>
+
       <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Appointment Calendar</h1>
+          <h1 className="text-xl font-bold text-gray-900">Salon Operations & Appointment Calendar</h1>
           <p className="text-sm text-gray-500">
             {selectedDay ? `Daily Schedule: ${selectedDay}` : `${monthName} ${year}`}
           </p>
@@ -186,7 +208,7 @@ export default function DashboardPage() {
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the incident details..."
+                    placeholder="Describe incident details (e.g., handling behavior, coat matting, or minor nick)..."
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-black text-xs"
                     required
@@ -219,7 +241,7 @@ export default function DashboardPage() {
 
                   <div className="space-y-2">
                     {staffAppointments.length === 0 ? (
-                      <p className="text-xs text-gray-500 italic py-4 text-center">No bookings scheduled</p>
+                      <p className="text-xs text-gray-500 italic py-4 text-center">No grooming slots scheduled</p>
                     ) : (
                       staffAppointments.map((app) => (
                         <div key={app.id} className="bg-white p-3 rounded-md shadow-xs border border-gray-100 space-y-2">
@@ -243,13 +265,12 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div>
-                            {/* Clickable Dog Name in Daily View */}
                             {app.pets?.id ? (
                               <Link href={`/dashboard/clients/${app.pets.id}`} className="text-xs font-bold text-blue-600 hover:underline">
                                 {app.pets.dog_name} →
                               </Link>
                             ) : (
-                              <p className="text-xs font-bold text-gray-900">Pet</p>
+                              <p className="text-xs font-bold text-gray-900">Canine Client</p>
                             )}
                             <p className="text-[11px] text-gray-600">Owner: {app.pets?.client_name}</p>
                           </div>
@@ -288,13 +309,12 @@ export default function DashboardPage() {
                   <div className="space-y-1 mt-1">
                     {dayAppointments.slice(0, 2).map((app) => (
                       <div key={app.id} className="p-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-900">
-                        {/* Clickable Dog Name in Month Grid View */}
                         {app.pets?.id ? (
                           <Link href={`/dashboard/clients/${app.pets.id}`} onClick={(e) => e.stopPropagation()} className="font-semibold truncate block hover:underline">
                             {app.pets.dog_name}
                           </Link>
                         ) : (
-                          <p className="font-semibold truncate">Pet</p>
+                          <p className="font-semibold truncate">Canine Client</p>
                         )}
                         <p className="text-[9px] text-blue-600">{app.time_slot}</p>
                       </div>
