@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 
-export default function DogDetailPage() {
+export default function PetDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [pet, setPet] = useState<any>(null);
@@ -70,9 +70,30 @@ export default function DogDetailPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-white p-6 rounded-lg shadow-sm space-y-2">
-        <h1 className="text-xl font-bold text-gray-900">{petName} ({pet.breed || 'Unknown Breed'})</h1>
-        <p className="text-sm text-gray-600">Owner: {ownerName}</p>
+      <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{petName}</h1>
+            <p className="text-sm text-gray-600 mt-0.5">Breed: {pet.breed || 'Unknown Breed'}</p>
+            <p className="text-sm text-gray-600">Owner: {ownerName}</p>
+          </div>
+          {pet.on_cancellation_list && (
+            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md">
+              On Cancellation List
+            </span>
+          )}
+        </div>
+
+        <div className="border-t pt-4 grid grid-cols-2 gap-4 text-xs text-gray-700">
+          <div>
+            <span className="font-semibold text-gray-900 block mb-1">Temperament / Notes</span>
+            <p>{pet.notes || pet.temperament || 'No special notes logged for this pet.'}</p>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-900 block mb-1">Record ID</span>
+            <p className="font-mono text-gray-500">{pet.id}</p>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">

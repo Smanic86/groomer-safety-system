@@ -30,7 +30,7 @@ export default function CalendarPage() {
   };
 
   const fetchPets = async () => {
-    const { data, error } = await supabase.from('pets').select('*').order('dog_name', { ascending: true });
+    const { data, error } = await supabase.from('pets').select('*');
     if (error) setErrorMsg(error.message);
     else if (data) setPets(data);
   };
@@ -144,11 +144,15 @@ export default function CalendarPage() {
                 className="w-full px-3 py-2 border rounded-md text-black bg-white"
               >
                 <option value="">-- Choose Pet Profile --</option>
-                {pets.map((pet) => (
-                  <option key={pet.id} value={pet.id}>
-                    {pet.dog_name || pet.name} ({pet.breed || 'Unknown'}) - {pet.client_name || pet.owner_name}
-                  </option>
-                ))}
+                {pets.map((pet) => {
+                  const pName = pet.dog_name || pet.name || 'Unnamed Pet';
+                  const cName = pet.client_name || pet.owner_name || 'Unknown Owner';
+                  return (
+                    <option key={pet.id} value={pet.id}>
+                      {pName} ({pet.breed || 'Unknown'}) - {cName}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div>
