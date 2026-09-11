@@ -6,71 +6,67 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
-    router.refresh();
   };
 
-  const navItems = [
+  const navLinks = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Clients & Pets', href: '/dashboard/clients' },
-    { name: 'Cancellation List', href: '/dashboard/cancellations' },
-    { name: 'Incidents', href: '/dashboard/incidents' },
-    { name: 'Staff', href: '/dashboard/staff' },
+    { name: 'Client Directory', href: '/dashboard/clients' },
+    { name: 'Calendar & Bookings', href: '/dashboard/calendar' },
+    { name: 'Client Intake', href: '/dashboard/intake' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-          <div className="flex items-center space-x-8">
-            <span className="font-bold text-gray-900 text-lg">Groomer Safety Portal</span>
-            <nav className="hidden md:flex space-x-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 bg-white border-b md:border-r border-gray-200 p-6 flex flex-col justify-between shrink-0">
+        <div className="space-y-6">
+          <div>
+            <h1 className="font-bold text-gray-900 text-base">Groomer Safety Portal</h1>
+            <p className="text-xs text-gray-500">Salon Management Hub</p>
           </div>
 
+          <nav className="space-y-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-3 py-2 rounded-md text-xs font-medium transition ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="pt-6 border-t border-gray-100">
           <button
-            onClick={handleSignOut}
-            className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition"
+            onClick={handleLogout}
+            className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-md transition"
           >
             Sign Out
           </button>
         </div>
-      </header>
+      </aside>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+      {/* Main Content Area */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         {children}
       </main>
-
-      <footer className="bg-white border-t border-gray-200 py-4 text-center text-xs text-gray-500">
-        Copyright © 2026 Groomer Safety Portal. All rights reserved.
-      </footer>
     </div>
   );
 }
