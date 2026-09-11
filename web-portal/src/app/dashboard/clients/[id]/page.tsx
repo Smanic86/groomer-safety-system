@@ -1,182 +1,113 @@
 // Copyright © 2026 Groomer Safety Portal. All rights reserved.
 
-'use client';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useParams, useRouter } from 'next/navigation';
+const FLAG_LABELS: Record<string, string> = {
+  nail_clipper_aggressive: 'Nail Clipper Aggressive',
+  muzzle_required: 'Muzzle Required',
+  sensitive_ears: 'Sensitive Ears',
+};
 
-export default function PetDetailPage() {
-  const { id } = useParams();
-  const router = useRouter();
-  const [pet, setPet] = useState<any>(null);
-  const [appointmentDate, setAppointmentDate] = useState('');
-  const [serviceType, setServiceType] = useState('Full Groom');
-  const [newNote, setNewNote] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+export default async function PetDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
 
-  const supabase = createClient();
+  const { data: pet, error } = await supabase
+    .from('pets')
+    .select('id, dog_name, breed, temperament_rating, trigger_flags, vet_notes, photo_url, client_name, client_email, client_phone')
+    .eq('id', id)
+    .single();
 
-  useEffect(() => {
-    if (id) fetchPetDetails();
-  }, [id]);
+  if (error || !pet) {
+    return <p className="text-red-600">Pet not found.</p>;
+  }
 
-  const fetchPetDetails = async () => {
-    const { data, error } = await supabase.from('pets').select('*').eq('id', id).single();
-    if (error) setErrorMsg(error.message);
-    else {
-      setPet(data);
-      setNewNote(data.notes || data.temperament || '');
-    }
-    setLoading(false);
-  };
+  const isHighRisk = pet.temperament_rating === 'aggressive' || pet.temperament_rating === 'reactive';
 
-  const handleSaveNotes = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const { error } = await supabase
-      .from('pets')
-      .update({ notes: newNote })
-      .eq('id', id);
-
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      setSuccessMsg('Profile notes updated successfully!');
-      setTimeout(() => setSuccessMsg(null), 3000);
-    }
-  };
-
-  const handleBookForPet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setErrorMsg('You must be logged in.');
-      setSubmitting(false);
-      return;
-    }
-
-    const { error } = await supabase.from('appointments').insert([
-      {
-        user_id: user.id,
-        client_name: pet.client_name || pet.owner_name,
-        dog_name: pet.dog_name || pet.name,
-        service_type: serviceType,
-        appointment_date: appointmentDate,
-      },
-    ]);
-
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      setSuccessMsg('Appointment booked successfully!');
-      setTimeout(() => router.push('/dashboard/calendar'), 1500);
-    }
-    setSubmitting(false);
-  };
-
-  if (loading) return <p className="p-6 text-sm text-gray-500">Loading pet profile...</p>;
-  if (!pet) return <p className="p-6 text-sm text-red-500">Pet profile not found.</p>;
-
-  const petName = pet.dog_name || pet.name || 'Unknown Pet';
-  const ownerName = pet.client_name || pet.owner_name || 'Unknown Owner';
-  const petPhoto = pet.photo_url || pet.image_url || pet.photo;
+  async function handlePhotoUpdate(formData: FormData) {
+    'use server';
+    const photoUrl = formData.get('photo_url') as string;
+    const subClient = await createClient();
+    await subClient.from('pets').update({ photo_url: photoUrl }).eq('id', id);
+    revalidatePath(`/dashboard/clients/${id}`);
+  }
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col sm:flex-row gap-6 items-start">
-        {petPhoto ? (
-          <img
-            src={petPhoto}
-            alt={petName}
-            className="w-28 h-28 object-cover rounded-lg border border-gray-200 shadow-sm"
-          />
-        ) : (
-          <div className="w-28 h-28 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-400 font-medium">
-            No Photo
-          </div>
-        )}
+    <div className="max-w-2xl space-y-6">
+      <div>
+        <Link href="/dashboard/pets" className="text-emerald-700 font-semibold text-sm hover:underline">← Back to Pet Profiles</Link>
+      </div>
 
-        <div className="flex-1 space-y-2">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{petName}</h1>
-              <p className="text-sm text-gray-600">Breed: {pet.breed || 'Unknown Breed'}</p>
-              <p className="text-sm text-gray-600">Owner: {ownerName}</p>
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-4">
+        <div className="flex items-start space-x-4">
+          {pet.photo_url ? (
+            <img src={pet.photo_url} alt={pet.dog_name} className="w-24 h-24 rounded-lg object-cover border border-gray-200" />
+          ) : (
+            <div className="w-24 h-24 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-emerald-700 text-xs font-semibold text-center p-1">
+              No Photo
             </div>
-            {pet.on_cancellation_list && (
-              <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md">
-                On Cancellation List
-              </span>
-            )}
+          )}
+          <div className="space-y-1 flex-1">
+            <h2 className="text-2xl font-bold text-gray-900">{pet.dog_name}</h2>
+            <p className="text-sm text-gray-500">
+              {pet.breed ?? 'Unknown breed'} • Owner: {pet.client_name ?? 'Unknown'}
+            </p>
+            <span
+              className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold mt-1 ${
+                isHighRisk ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+              }`}
+            >
+              Temperament: {pet.temperament_rating ? pet.temperament_rating.toUpperCase() : 'STANDARD'}
+            </span>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
-        <h2 className="text-sm font-bold text-gray-900 uppercase">Grooming & Safety Notes</h2>
-        {successMsg && <div className="p-3 bg-emerald-100 text-emerald-700 rounded-md text-xs">{successMsg}</div>}
-        <form onSubmit={handleSaveNotes} className="space-y-3 text-xs">
-          <textarea
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            rows={4}
-            placeholder="Log temperament, behavioral quirks, matting details, or special handling notes..."
-            className="w-full p-3 border rounded-md text-black focus:outline-none focus:ring-1 focus:ring-blue-600"
+        {/* Photo Upload Form */}
+        <form action={handlePhotoUpdate} className="pt-4 border-t border-gray-100 flex items-center space-x-2">
+          <input
+            type="url"
+            name="photo_url"
+            placeholder="Paste Image URL here (e.g. https://...)"
+            defaultValue={pet.photo_url || ''}
+            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-xs text-black"
           />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-md transition"
-          >
-            Save Notes
+          <button type="submit" className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md transition">
+            Save Photo
           </button>
         </form>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
-        <h2 className="text-sm font-bold text-gray-900 uppercase">Book Appointment for {petName}</h2>
-        {errorMsg && <div className="p-3 bg-red-100 text-red-700 rounded-md text-xs">{errorMsg}</div>}
+      {pet.trigger_flags?.length > 0 && (
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-2">⚠️ Trigger Flags</h3>
+          <ul className="space-y-1">
+            {pet.trigger_flags.map((flag: string) => (
+              <li key={flag} className="text-red-700 font-medium text-sm">
+                • {FLAG_LABELS[flag] ?? flag}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-        <form onSubmit={handleBookForPet} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-medium text-gray-700 mb-1">Appointment Date</label>
-            <input
-              type="date"
-              value={appointmentDate}
-              onChange={(e) => setAppointmentDate(e.target.value)}
-              required
-              className="w-full px-3 py-2 border rounded-md text-black"
-            />
-          </div>
-          <div>
-            <label className="block font-medium text-gray-700 mb-1">Service Type</label>
-            <select
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md text-black bg-white"
-            >
-              <option value="Full Groom">Full Groom</option>
-              <option value="Bath & Brush">Bath & Brush</option>
-              <option value="Nail Trim">Nail Trim</option>
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition"
-          >
-            {submitting ? 'Booking...' : `Confirm Booking for ${petName}`}
-          </button>
-        </form>
+      {pet.vet_notes && (
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-2">Vet Notes</h3>
+          <p className="text-sm text-gray-700">{pet.vet_notes}</p>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="font-bold text-gray-900 mb-2">Owner Contact</h3>
+        <p className="text-sm text-gray-600">Name: {pet.client_name ?? '—'}</p>
+        <p className="text-sm text-gray-600">Email: {pet.client_email ?? '—'}</p>
+        <p className="text-sm text-gray-600">Phone: {pet.client_phone ?? '—'}</p>
       </div>
     </div>
   );
