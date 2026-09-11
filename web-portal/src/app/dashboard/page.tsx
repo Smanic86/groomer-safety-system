@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -64,7 +65,7 @@ export default function DashboardPage() {
     const { error } = await supabase.from('Incident_reports').insert([
       {
         user_id: user.id,
-        dog_id: incidentApp.pets?.id,
+        pet_id: incidentApp.pets?.id,
         staff_id: incidentStaffId,
         incident_target: incidentTarget,
         description,
@@ -242,7 +243,14 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-gray-900">{app.pets?.dog_name || 'Pet'}</p>
+                            {/* Clickable Dog Name in Daily View */}
+                            {app.pets?.id ? (
+                              <Link href={`/dashboard/clients/${app.pets.id}`} className="text-xs font-bold text-blue-600 hover:underline">
+                                {app.pets.dog_name} →
+                              </Link>
+                            ) : (
+                              <p className="text-xs font-bold text-gray-900">Pet</p>
+                            )}
                             <p className="text-[11px] text-gray-600">Owner: {app.pets?.client_name}</p>
                           </div>
                         </div>
@@ -280,7 +288,14 @@ export default function DashboardPage() {
                   <div className="space-y-1 mt-1">
                     {dayAppointments.slice(0, 2).map((app) => (
                       <div key={app.id} className="p-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-900">
-                        <p className="font-semibold truncate">{app.pets?.dog_name || 'Pet'}</p>
+                        {/* Clickable Dog Name in Month Grid View */}
+                        {app.pets?.id ? (
+                          <Link href={`/dashboard/clients/${app.pets.id}`} onClick={(e) => e.stopPropagation()} className="font-semibold truncate block hover:underline">
+                            {app.pets.dog_name}
+                          </Link>
+                        ) : (
+                          <p className="font-semibold truncate">Pet</p>
+                        )}
                         <p className="text-[9px] text-blue-600">{app.time_slot}</p>
                       </div>
                     ))}
