@@ -12,6 +12,7 @@ export default function PetDetailPage() {
   const [pet, setPet] = useState<any>(null);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [serviceType, setServiceType] = useState('Full Groom');
+  const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -26,8 +27,29 @@ export default function PetDetailPage() {
   const fetchPetDetails = async () => {
     const { data, error } = await supabase.from('pets').select('*').eq('id', id).single();
     if (error) setErrorMsg(error.message);
-    else setPet(data);
+    else {
+      setPet(data);
+      setNewNote(data.notes || '');
+    }
     setLoading(false);
+  };
+
+  const handleSaveNotes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    const { error } = await supabase
+      .from('pets')
+      .update({ notes: newNote })
+      .eq('id', id);
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setSuccessMsg('Profile notes updated successfully!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    }
   };
 
   const handleBookForPet = async (e: React.FormEvent) => {
@@ -67,33 +89,56 @@ export default function PetDetailPage() {
 
   const petName = pet.dog_name || pet.name || 'Unknown Pet';
   const ownerName = pet.client_name || pet.owner_name || 'Unknown Owner';
+  const petPhoto = pet.photo_url || pet.image_url || pet.photo;
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-white p-6 rounded-lg shadow-sm space-y-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{petName}</h1>
-            <p className="text-sm text-gray-600 mt-0.5">Breed: {pet.breed || 'Unknown Breed'}</p>
-            <p className="text-sm text-gray-600">Owner: {ownerName}</p>
+    <div className="space-y-6 max-w-3xl">
+      <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col sm:flex-row gap-6 items-start">
+        {petPhoto ? (
+          <img
+            src={petPhoto}
+            alt={petName}
+            className="w-28 h-28 object-cover rounded-lg border border-gray-200 shadow-sm"
+          />
+        ) : (
+          <div className="w-28 h-28 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-400 font-medium">
+            No Photo
           </div>
-          {pet.on_cancellation_list && (
-            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md">
-              On Cancellation List
-            </span>
-          )}
-        </div>
+        )}
 
-        <div className="border-t pt-4 grid grid-cols-2 gap-4 text-xs text-gray-700">
-          <div>
-            <span className="font-semibold text-gray-900 block mb-1">Temperament / Notes</span>
-            <p>{pet.notes || pet.temperament || 'No special notes logged for this pet.'}</p>
-          </div>
-          <div>
-            <span className="font-semibold text-gray-900 block mb-1">Record ID</span>
-            <p className="font-mono text-gray-500">{pet.id}</p>
+        <div className="flex-1 space-y-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">{petName}</h1>
+              <p className="text-sm text-gray-600">Breed: {pet.breed || 'Unknown Breed'}</p>
+              <p className="text-sm text-gray-600">Owner: {ownerName}</p>
+            </div>
+            {pet.on_cancellation_list && (
+              <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md">
+                On Cancellation List
+              </span>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
+        <h2 className="text-sm font-bold text-gray-900 uppercase">Grooming & Safety Notes</h2>
+        <form onSubmit={handleSaveNotes} className="space-y-3 text-xs">
+          <textarea
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            rows={4}
+            placeholder="Log temperament, behavioral quirks, matting details, or special handling notes..."
+            className="w-full p-3 border rounded-md text-black focus:outline-none focus:ring-1 focus:ring-blue-600"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-md transition"
+          >
+            Save Notes
+          </button>
+        </form>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
