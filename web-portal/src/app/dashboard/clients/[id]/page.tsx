@@ -29,7 +29,7 @@ export default function PetDetailPage() {
     if (error) setErrorMsg(error.message);
     else {
       setPet(data);
-      setNewNote(data.notes || '');
+      setNewNote(data.notes || data.temperament || '');
     }
     setLoading(false);
   };
@@ -124,6 +124,7 @@ export default function PetDetailPage() {
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
         <h2 className="text-sm font-bold text-gray-900 uppercase">Grooming & Safety Notes</h2>
+        {successMsg && <div className="p-3 bg-emerald-100 text-emerald-700 rounded-md text-xs">{successMsg}</div>}
         <form onSubmit={handleSaveNotes} className="space-y-3 text-xs">
           <textarea
             value={newNote}
@@ -144,7 +145,6 @@ export default function PetDetailPage() {
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
         <h2 className="text-sm font-bold text-gray-900 uppercase">Book Appointment for {petName}</h2>
         {errorMsg && <div className="p-3 bg-red-100 text-red-700 rounded-md text-xs">{errorMsg}</div>}
-        {successMsg && <div className="p-3 bg-emerald-100 text-emerald-700 rounded-md text-xs">{successMsg}</div>}
 
         <form onSubmit={handleBookForPet} className="space-y-4 text-xs">
           <div>

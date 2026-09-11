@@ -15,6 +15,7 @@ export default function CalendarPage() {
   const [service, setService] = useState('Full Groom');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -54,6 +55,7 @@ export default function CalendarPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -75,10 +77,12 @@ export default function CalendarPage() {
     if (error) {
       setErrorMsg(error.message);
     } else {
+      setSuccessMsg('Appointment booked successfully!');
       setSelectedPetId('');
       setClientName('');
       setDogName('');
       fetchAppointments();
+      setTimeout(() => setSuccessMsg(null), 3000);
     }
     setLoading(false);
   };
@@ -105,6 +109,7 @@ export default function CalendarPage() {
       </div>
 
       {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
+      {successMsg && <div className="p-4 bg-emerald-100 text-emerald-700 rounded-md text-sm">{successMsg}</div>}
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3">
         <h2 className="text-sm font-bold text-gray-900 uppercase">Select a Date</h2>
