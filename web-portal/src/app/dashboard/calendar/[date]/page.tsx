@@ -7,9 +7,9 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
-  const [dogs, setDogs] = useState<any[]>([]);
+  const [pets, setPets] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedDogId, setSelectedDogId] = useState('');
+  const [selectedPetId, setSelectedPetId] = useState('');
   const [clientName, setClientName] = useState('');
   const [dogName, setDogName] = useState('');
   const [service, setService] = useState('Full Groom');
@@ -20,7 +20,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchAppointments();
-    fetchDogs();
+    fetchPets();
   }, []);
 
   const fetchAppointments = async () => {
@@ -29,24 +29,24 @@ export default function CalendarPage() {
     else if (data) setAppointments(data);
   };
 
-  const fetchDogs = async () => {
-    const { data, error } = await supabase.from('dog_profiles').select('*').order('dog_name', { ascending: true });
-    if (!error && data) setDogs(data);
+  const fetchPets = async () => {
+    const { data, error } = await supabase.from('pets').select('*').order('dog_name', { ascending: true });
+    if (error) setErrorMsg(error.message);
+    else if (data) setPets(data);
   };
 
-  // Auto-fill client and dog names when selecting from the directory dropdown
-  const handleDogSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const dogId = e.target.value;
-    setSelectedDogId(dogId);
-    if (!dogId) {
+  const handlePetSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const petId = e.target.value;
+    setSelectedPetId(petId);
+    if (!petId) {
       setDogName('');
       setClientName('');
       return;
     }
-    const foundDog = dogs.find((d) => d.id === dogId);
-    if (foundDog) {
-      setDogName(foundDog.dog_name || '');
-      setClientName(foundDog.client_name || '');
+    const foundPet = pets.find((p) => p.id === petId);
+    if (foundPet) {
+      setDogName(foundPet.dog_name || foundPet.name || '');
+      setClientName(foundPet.client_name || foundPet.owner_name || '');
     }
   };
 
@@ -75,7 +75,7 @@ export default function CalendarPage() {
     if (error) {
       setErrorMsg(error.message);
     } else {
-      setSelectedDogId('');
+      setSelectedPetId('');
       setClientName('');
       setDogName('');
       fetchAppointments();
@@ -101,12 +101,11 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">Appointment Scheduler</h1>
-        <p className="text-sm text-gray-500">Click any day from the calendar grid below, select a dog, and book their session.</p>
+        <p className="text-sm text-gray-500">Click any day on the grid below, pick a pet from your database, and book.</p>
       </div>
 
       {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
 
-      {/* Interactive Date Click Grid */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3">
         <h2 className="text-sm font-bold text-gray-900 uppercase">Select a Date</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
@@ -134,21 +133,20 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Booking Form for Selected Date */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
           <h2 className="text-sm font-bold text-gray-900 uppercase">Book for {selectedDate}</h2>
           <form onSubmit={handleBookAppointment} className="space-y-3 text-xs">
             <div>
-              <label className="block font-medium text-gray-700 mb-1">Select from Registered Dogs</label>
+              <label className="block font-medium text-gray-700 mb-1">Select Registered Pet</label>
               <select
-                value={selectedDogId}
-                onChange={handleDogSelect}
+                value={selectedPetId}
+                onChange={handlePetSelect}
                 className="w-full px-3 py-2 border rounded-md text-black bg-white"
               >
-                <option value="">-- Choose Dog Profile --</option>
-                {dogs.map((dog) => (
-                  <option key={dog.id} value={dog.id}>
-                    {dog.dog_name} ({dog.breed || 'Unknown'}) - {dog.client_name}
+                <option value="">-- Choose Pet Profile --</option>
+                {pets.map((pet) => (
+                  <option key={pet.id} value={pet.id}>
+                    {pet.dog_name || pet.name} ({pet.breed || 'Unknown'}) - {pet.client_name || pet.owner_name}
                   </option>
                 ))}
               </select>
@@ -197,7 +195,6 @@ export default function CalendarPage() {
           </form>
         </div>
 
-        {/* Scheduled Appointments List */}
         <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
           <h2 className="text-sm font-bold text-gray-900 uppercase">Upcoming Scheduled Appointments</h2>
           <div className="space-y-3">
