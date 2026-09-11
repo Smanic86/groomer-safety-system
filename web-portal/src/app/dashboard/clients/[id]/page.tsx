@@ -70,11 +70,6 @@ export default function DogDetailPage() {
       <div className="bg-white p-6 rounded-lg shadow-sm space-y-2">
         <h1 className="text-xl font-bold text-gray-900">{dog.dog_name} ({dog.breed || 'Unknown Breed'})</h1>
         <p className="text-sm text-gray-600">Owner: {dog.client_name}</p>
-        {dog.on_cancellation_list && (
-          <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded">
-            On Cancellation List
-          </span>
-        )}
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">

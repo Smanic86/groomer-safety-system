@@ -4,85 +4,213 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
 
-export default function CancellationsPage() {
-  const [cancellations, setCancellations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function CalendarPage() {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [dogs, setDogs] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDogId, setSelectedDogId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [dogName, setDogName] = useState('');
+  const [service, setService] = useState('Full Groom');
+  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const supabase = createClient();
 
   useEffect(() => {
-    fetchCancellations();
+    fetchAppointments();
+    fetchDogs();
   }, []);
 
-  const fetchCancellations = async () => {
-    const { data, error } = await supabase
-      .from('pets')
-      .select('*')
-      .eq('on_cancellation_list', true)
-      .order('dog_name', { ascending: true });
+  const fetchAppointments = async () => {
+    const { data, error } = await supabase.from('appointments').select('*').order('appointment_date', { ascending: true });
+    if (error) setErrorMsg(error.message);
+    else if (data) setAppointments(data);
+  };
+
+  const fetchDogs = async () => {
+    const { data, error } = await supabase.from('dog_profiles').select('*').order('dog_name', { ascending: true });
+    if (!error && data) setDogs(data);
+  };
+
+  const handleDogSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const dogId = e.target.value;
+    setSelectedDogId(dogId);
+    if (!dogId) {
+      setDogName('');
+      setClientName('');
+      return;
+    }
+    const foundDog = dogs.find((d) => d.id === dogId);
+    if (foundDog) {
+      setDogName(foundDog.dog_name || '');
+      setClientName(foundDog.client_name || '');
+    }
+  };
+
+  const handleBookAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMsg('You must be logged in.');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from('appointments').insert([
+      {
+        user_id: user.id,
+        client_name: clientName,
+        dog_name: dogName,
+        service_type: service,
+        appointment_date: selectedDate,
+      },
+    ]);
 
     if (error) {
       setErrorMsg(error.message);
-    } else if (data) {
-      setCancellations(data);
+    } else {
+      setSelectedDogId('');
+      setClientName('');
+      setDogName('');
+      fetchAppointments();
     }
     setLoading(false);
   };
 
-  const removeFromCancellationList = async (id: string) => {
-    const { error } = await supabase.from('pets').update({ on_cancellation_list: false }).eq('id', id);
-    if (!error) {
-      fetchCancellations();
+  const generateUpcomingDays = () => {
+    const days = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateString = d.toISOString().split('T')[0];
+      const displayLabel = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+      days.push({ dateString, displayLabel });
     }
+    return days;
   };
 
-  if (loading) return <p className="p-6 text-sm text-gray-500">Loading cancellation list...</p>;
+  const upcomingDays = generateUpcomingDays();
 
   return (
     <div className="space-y-6">
-      {errorMsg && (
-        <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>
-      )}
-
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h1 className="text-xl font-bold text-gray-900">Cancellation / Standby List</h1>
-        <p className="text-sm text-gray-500">Pets waiting for an earlier slot or cancellation opening</p>
+        <h1 className="text-xl font-bold text-gray-900">Appointment Scheduler</h1>
+        <p className="text-sm text-gray-500">Click any day on the grid below, pick a dog from your directory, and book.</p>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-        <div className="divide-y divide-gray-200">
-          {cancellations.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">
-              No pets currently on the cancellation list. You can add pets to this list directly from the Clients & Pets directory.
-            </p>
-          ) : (
-            cancellations.map((pet) => (
-              <div key={pet.id} className="py-4 flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {pet.dog_name} <span className="text-xs font-normal text-gray-500">({pet.breed || 'Unknown breed'})</span>
-                  </h3>
-                  <p className="text-sm text-gray-600">Owner: {pet.client_name}</p>
+      {errorMsg && <div className="p-4 bg-red-100 text-red-700 rounded-md text-sm">Error: {errorMsg}</div>}
+
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3">
+        <h2 className="text-sm font-bold text-gray-900 uppercase">Select a Date</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+          {upcomingDays.map((day) => {
+            const isSelected = selectedDate === day.dateString;
+            return (
+              <button
+                key={day.dateString}
+                type="button"
+                onClick={() => setSelectedDate(day.dateString)}
+                className={`p-3 rounded-lg border text-left transition ${
+                  isSelected
+                    ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <p className="text-xs font-semibold">{day.displayLabel}</p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  {appointments.filter((a) => a.appointment_date === day.dateString).length} booked
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
+          <h2 className="text-sm font-bold text-gray-900 uppercase">Book for {selectedDate}</h2>
+          <form onSubmit={handleBookAppointment} className="space-y-3 text-xs">
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Select Registered Dog</label>
+              <select
+                value={selectedDogId}
+                onChange={handleDogSelect}
+                className="w-full px-3 py-2 border rounded-md text-black bg-white"
+              >
+                <option value="">-- Choose Dog Profile --</option>
+                {dogs.map((dog) => (
+                  <option key={dog.id} value={dog.id}>
+                    {dog.dog_name} ({dog.breed || 'Unknown'}) - {dog.client_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Client Name</label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                required
+                className="w-full px-3 py-2 border rounded-md text-black"
+                placeholder="John Smith"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Dog Name</label>
+              <input
+                type="text"
+                value={dogName}
+                onChange={(e) => setDogName(e.target.value)}
+                required
+                className="w-full px-3 py-2 border rounded-md text-black"
+                placeholder="Buster"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Service Type</label>
+              <select
+                value={service}
+                onChange={(e) => setService(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-black bg-white"
+              >
+                <option value="Full Groom">Full Groom</option>
+                <option value="Bath & Brush">Bath & Brush</option>
+                <option value="Nail Trim">Nail Trim</option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition"
+            >
+              {loading ? 'Booking...' : 'Confirm Booking'}
+            </button>
+          </form>
+        </div>
+
+        <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
+          <h2 className="text-sm font-bold text-gray-900 uppercase">Upcoming Scheduled Appointments</h2>
+          <div className="space-y-3">
+            {appointments.length === 0 ? (
+              <p className="text-xs text-gray-500 py-4">No appointments scheduled yet.</p>
+            ) : (
+              appointments.map((app) => (
+                <div key={app.id} className="p-3 bg-gray-50 border rounded-lg flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-bold text-gray-900">{app.dog_name} ({app.service_type})</p>
+                    <p className="text-gray-600">Client: {app.client_name}</p>
+                    <p className="text-blue-600 font-semibold mt-0.5">Date: {app.appointment_date}</p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => removeFromCancellationList(pet.id)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition"
-                  >
-                    Remove from List
-                  </button>
-                  <Link
-                    href={`/dashboard/clients/${pet.id}`}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition"
-                  >
-                    Book Appointment
-                  </Link>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
