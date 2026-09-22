@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -49,7 +48,7 @@
 }
 
 :root {
-  --background: oklch(0.975 0.012 165); /* Soft pastel mint green */
+  --background: oklch(0.975 0.012 165);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
